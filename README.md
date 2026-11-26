@@ -1,4 +1,4 @@
-# My Finances
+# Finances
 
 Local app to record expenses and income and view them by month. C++20 with Crow, SQLite (via SQLiteCpp) and HTML + HTMX/Chart.js.
 
