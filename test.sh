@@ -22,6 +22,9 @@ done
 month="$(date +%Y-%m)"
 body="$(curl -fsS http://127.0.0.1:8080/)"
 grep -q 'Your finances at a glance' <<<"$body"
+grep -q 'dashCategoryChartData' <<<"$body"
+grep -q 'dashCurrentChartData' <<<"$body"
+grep -q 'currentCategoryChartData' <<<"$body"
 
 body="$(curl -fsS "http://127.0.0.1:8080/month/$month")"
 grep -q 'No entries yet this month' <<<"$body"
@@ -32,6 +35,8 @@ code="$(post -d "title=Test purchase&amount=12,50&kind=expense&category=alimenta
 [[ "$code" == 200 ]] || { echo "Valid POST returned $code"; exit 1; }
 grep -q 'Test purchase' "$tmp/out.html"
 grep -q '12,50' "$tmp/out.html"
+grep -q 'hx-delete=' "$tmp/out.html"
+! grep -q '<th>Added</th>' "$tmp/out.html"
 
 code="$(post -d "title=Nominal&amount=1000&kind=income&category=otros&date=$month-01&month=$month")"
 [[ "$code" == 200 ]] || { echo "Income POST returned $code"; exit 1; }
@@ -55,4 +60,18 @@ body="$(curl -fsS http://127.0.0.1:8080/)"
 grep -q '1.000,00' <<<"$body"
 grep -q '12,50' <<<"$body"
 
-echo "OK: dashboard, entry list, add, validation and statistics"
+id="$(sqlite3 "$tmp/finances.db" "SELECT id FROM entries WHERE title='Test purchase'")"
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' -X DELETE "http://127.0.0.1:8080/entries/$id")"
+[[ "$code" == 200 ]] || { echo "DELETE returned $code"; exit 1; }
+grep -q 'Nominal' "$tmp/out.html"
+! grep -q 'Test purchase' "$tmp/out.html"
+count="$(sqlite3 "$tmp/finances.db" 'SELECT COUNT(*) FROM entries')"
+[[ "$count" == 1 ]] || { echo "Expected 1 row after delete, got $count"; exit 1; }
+
+code="$(post -d "title=Newest date&amount=1&kind=expense&category=ocio&date=$month-25&month=$month")"
+[[ "$code" == 200 ]] || { echo "Late POST returned $code"; exit 1; }
+newest="$(grep -n 'Newest date' "$tmp/out.html" | cut -d: -f1 | head -1)"
+older="$(grep -n 'Nominal' "$tmp/out.html" | cut -d: -f1 | head -1)"
+[[ "$newest" -lt "$older" ]] || { echo "Entries are not ordered by date"; exit 1; }
+
+echo "OK: dashboard, entry list, add, delete, validation, date order and statistics"

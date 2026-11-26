@@ -43,20 +43,40 @@ function renderDashboardChart() {
     options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
   });
 }
-function renderMonthChart() {
-  const el = document.getElementById('catChart');
+function renderDashboardCurrentChart() {
+  const el = document.getElementById('dashCurrentChart');
   if (!el || typeof Chart === 'undefined') return;
-  if (window._catChart) window._catChart.destroy();
-  const d = JSON.parse(document.getElementById('catChartData').textContent);
-  window._catChart = new Chart(el, {
+  const d = JSON.parse(document.getElementById('dashCurrentChartData').textContent);
+  new Chart(el, {
+    type: 'bar',
+    indexAxis: 'y',
+    data: { labels: d.labels, datasets: [
+      { label: 'Income', data: [d.income[0]], backgroundColor: '#2f9e6d', borderRadius: 6 },
+      { label: 'Expenses', data: [d.expenses[0]], backgroundColor: '#e06b6b', borderRadius: 6 }
+    ] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { x: { beginAtZero: true } } }
+  });
+}
+function renderDoughnut(canvasId, dataId) {
+  const el = document.getElementById(canvasId);
+  if (!el || typeof Chart === 'undefined') return null;
+  const d = JSON.parse(document.getElementById(dataId).textContent);
+  return new Chart(el, {
     type: 'doughnut',
     data: { labels: d.labels, datasets: [{ data: d.values,
       backgroundColor: ['#3b7dd8', '#e08b3e', '#7b61c9', '#3fa88b', '#b0b7c3'], borderWidth: 0 }] },
     options: { responsive: true, cutout: '68%', plugins: { legend: { position: 'bottom' } } }
   });
 }
+function renderMonthChart() {
+  if (window._catChart) window._catChart.destroy();
+  window._catChart = renderDoughnut('catChart', 'catChartData');
+}
 document.addEventListener('DOMContentLoaded', function () {
   renderDashboardChart();
+  renderDashboardCurrentChart();
+  renderDoughnut('dashCategoryChart', 'dashCategoryChartData');
+  renderDoughnut('currentCategoryChart', 'currentCategoryChartData');
   renderMonthChart();
 });
 </script>

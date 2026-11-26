@@ -21,14 +21,26 @@
     <script type="application/json" id="dashChartData">{{{chart}}}</script>
   </div>
   <div class="panel">
+    <h2>Expenses by category · last 6 months</h2>
+    {{#has_history_tops}}
+    <div class="chart"><canvas id="dashCategoryChart"></canvas></div>
+    <script type="application/json" id="dashCategoryChartData">{{{history_category_chart}}}</script>
+    {{/has_history_tops}}
+    {{^has_history_tops}}<p class="muted">No expenses in the last 6 months.</p>{{/has_history_tops}}
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="panel">
+    <h2>Income vs. expenses · {{label}}</h2>
+    <div class="chart"><canvas id="dashCurrentChart"></canvas></div>
+    <script type="application/json" id="dashCurrentChartData">{{{current_chart}}}</script>
+  </div>
+  <div class="panel">
     <h2>Expenses by category · {{label}}</h2>
     {{#has_tops}}
-    <ul class="bars">
-      {{#tops}}
-      <li><div class="bar-head"><span>{{name}}</span><strong>{{amount}}</strong></div>
-          <div class="bar-track"><div class="bar-fill" style="width: {{pct}}%"></div></div></li>
-      {{/tops}}
-    </ul>
+    <div class="chart"><canvas id="currentCategoryChart"></canvas></div>
+    <script type="application/json" id="currentCategoryChartData">{{{category_chart}}}</script>
     {{/has_tops}}
     {{^has_tops}}<p class="muted">You haven't recorded any expenses this month yet.</p>{{/has_tops}}
   </div>
