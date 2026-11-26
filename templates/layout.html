@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{title}} · Mis finanzas</title>
+  <title>{{title}} · My Finances</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/chart.umd.min.js" defer></script>
@@ -11,12 +11,12 @@
 <body>
 <header class="topbar">
   <div class="wrap bar">
-    <a class="brand" href="/">💰 Mis finanzas</a>
+    <a class="brand" href="/">💰 My Finances</a>
     <nav>
       <a href="/" {{#dash_active}}class="active"{{/dash_active}}>Dashboard</a>
-      <a href="/month/{{current_month}}" {{#month_active}}class="active"{{/month_active}}>Este mes</a>
-      <select aria-label="Ir a otro mes" onchange="if(this.value) location.href=this.value">
-        <option value="">Otros meses…</option>
+      <a href="/month/{{current_month}}" {{#month_active}}class="active"{{/month_active}}>This month</a>
+      <select aria-label="Go to another month" onchange="if(this.value) location.href=this.value">
+        <option value="">Other months…</option>
         {{#months}}
         <option value="/month/{{month}}" {{#selected}}selected{{/selected}}>{{label}}</option>
         {{/months}}
@@ -27,7 +27,7 @@
 
 <main class="wrap" hx-on::after-swap="renderMonthChart()">{{{content}}}</main>
 
-<footer class="wrap muted foot">Todo se guarda en <code>finances.db</code> (SQLite). Datos solo locales.</footer>
+<footer class="wrap muted foot">Everything is stored in <code>finances.db</code> (SQLite). Local data only.</footer>
 
 <script>
 function renderDashboardChart() {
@@ -37,8 +37,8 @@ function renderDashboardChart() {
   new Chart(el, {
     type: 'bar',
     data: { labels: d.labels, datasets: [
-      { label: 'Ingresos', data: d.income, backgroundColor: '#2f9e6d', borderRadius: 6 },
-      { label: 'Gastos', data: d.expenses, backgroundColor: '#e06b6b', borderRadius: 6 }
+      { label: 'Income', data: d.income, backgroundColor: '#2f9e6d', borderRadius: 6 },
+      { label: 'Expenses', data: d.expenses, backgroundColor: '#e06b6b', borderRadius: 6 }
     ] },
     options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
   });

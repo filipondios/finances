@@ -1,27 +1,27 @@
 <section class="hero">
   <div>
-    <p class="eyebrow">Resumen de {{label}}</p>
-    <h1>Tus finanzas de un vistazo</h1>
-    <p class="muted">Ingresos, gastos y tendencia de los últimos meses.</p>
+    <p class="eyebrow">Summary for {{label}}</p>
+    <h1>Your finances at a glance</h1>
+    <p class="muted">Income, expenses and the trend over the last few months.</p>
   </div>
-  <a class="btn primary" href="/month/{{current_month}}">Ver este mes →</a>
+  <a class="btn primary" href="/month/{{current_month}}">View this month →</a>
 </section>
 
 <section class="cards">
-  <div class="card"><span class="label">Ingresos</span><strong class="good">{{income}}</strong></div>
-  <div class="card"><span class="label">Gastos</span><strong class="bad">{{expenses}}</strong></div>
+  <div class="card"><span class="label">Income</span><strong class="good">{{income}}</strong></div>
+  <div class="card"><span class="label">Expenses</span><strong class="bad">{{expenses}}</strong></div>
   <div class="card"><span class="label">Balance</span><strong>{{balance}}</strong></div>
-  <div class="card"><span class="label">Movimientos</span><strong>{{count}}</strong></div>
+  <div class="card"><span class="label">Transactions</span><strong>{{count}}</strong></div>
 </section>
 
 <section class="grid2">
   <div class="panel">
-    <h2>Ingresos vs. gastos · últimos 6 meses</h2>
+    <h2>Income vs. expenses · last 6 months</h2>
     <div class="chart"><canvas id="dashChart"></canvas></div>
     <script type="application/json" id="dashChartData">{{{chart}}}</script>
   </div>
   <div class="panel">
-    <h2>Gastos por categoría · {{label}}</h2>
+    <h2>Expenses by category · {{label}}</h2>
     {{#has_tops}}
     <ul class="bars">
       {{#tops}}
@@ -30,6 +30,6 @@
       {{/tops}}
     </ul>
     {{/has_tops}}
-    {{^has_tops}}<p class="muted">Aún no has registrado gastos este mes.</p>{{/has_tops}}
+    {{^has_tops}}<p class="muted">You haven't recorded any expenses this month yet.</p>{{/has_tops}}
   </div>
 </section>

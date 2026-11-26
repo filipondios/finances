@@ -1,0 +1,50 @@
+  <section class="cards">
+    <div class="card"><span class="label">Income</span><strong class="good">{{income}}</strong></div>
+    <div class="card"><span class="label">Expenses</span><strong class="bad">{{expenses}}</strong></div>
+    <div class="card"><span class="label">Balance</span><strong>{{balance}}</strong></div>
+    <div class="card"><span class="label">Transactions</span><strong>{{count}}</strong></div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>Expenses by category</h2>
+      {{#has_tops}}
+      <div class="chart"><canvas id="catChart"></canvas></div>
+      <script type="application/json" id="catChartData">{{{chart}}}</script>
+      {{/has_tops}}
+      {{^has_tops}}<p class="muted">No expenses this month.</p>{{/has_tops}}
+    </div>
+    <div class="panel">
+      <h2>Category breakdown</h2>
+      {{#has_tops}}
+      <ul class="bars">
+        {{#tops}}
+        <li><div class="bar-head"><span>{{name}}</span><strong>{{amount}}</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width: {{pct}}%"></div></div></li>
+        {{/tops}}
+      </ul>
+      {{/has_tops}}
+      {{^has_tops}}<p class="muted">No expenses this month.</p>{{/has_tops}}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Entries</h2><span class="muted">{{count}} records · newest first</span></div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Title</th><th>Amount</th><th>Category</th><th>Date</th><th>Added</th></tr></thead>
+        <tbody>
+          {{#rows}}
+          <tr>
+            <td><span class="badge {{kind}}">{{kind_label}}</span> {{title}}</td>
+            <td class="{{kind}}">{{amount}}</td>
+            <td><span class="chip">{{category}}</span></td>
+            <td>{{date}}</td>
+            <td class="muted small">{{added}}</td>
+          </tr>
+          {{/rows}}
+          {{^rows}}<tr><td colspan="5" class="muted">No entries yet this month. Add the first one above.</td></tr>{{/rows}}
+        </tbody>
+      </table>
+    </div>
+  </section>

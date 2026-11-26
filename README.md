@@ -1,32 +1,44 @@
-# Mis finanzas
+# My Finances
 
-App local para apuntar gastos e ingresos y verlos por mes. C++ con Crow, SQLite y HTML + HTMX/Chart.js.
+Local app to record expenses and income and view them by month. C++20 with Crow, SQLite (via SQLiteCpp) and HTML + HTMX/Chart.js.
 
-## Arrancar
+## Getting started
 
-Necesitas CMake (≥ 3.23, por los presets), Conan 2 y un compilador C++17. Crow, Asio y SQLite3 se gestionan con Conan; HTMX y Chart.js se sirven como ficheros estáticos locales.
+You need CMake (≥ 3.23, for the presets), Conan 2 and a compiler with C++20 (`std::format` and the `std::chrono` calendar: GCC ≥ 13, Clang ≥ 17 with libstdc++ 13, MSVC 2022). Crow, Asio and SQLiteCpp (with SQLite3) are managed with Conan; HTMX and Chart.js are served as local static files.
 
 ```sh
-conan profile detect          # solo la primera vez
+conan profile detect          # first time only
 conan install . --output-folder=build --build=missing
-conan install . --output-folder=build --build=missing -s build_type=Debug   # solo si usas el preset debug
+conan install . --output-folder=build --build=missing -s build_type=Debug   # only if you use the debug preset
 cmake --preset release
 cmake --build --preset release
 ./build/release/finances
 ```
 
-Abre <http://127.0.0.1:8080>. El ejecutable crea `finances.db` en el directorio desde el que lo lances, así que arráncalo desde aquí. CMake genera `build/release/compile_commands.json` (o `build/debug/` si usas el preset `debug`).
+Open <http://127.0.0.1:8080>. The executable creates `finances.db` in the current working directory, so run it from here. CMake generates `build/release/compile_commands.json` (or `build/debug/` with the `debug` preset).
 
-## Uso
+## Structure
 
-- **Dashboard**: balance del mes actual, evolución de los últimos 6 meses y gastos por categoría.
-- **Este mes / Otros meses**: listado ordenado por fecha de inserción (más reciente primero), con sus estadísticas y un formulario para añadir movimientos. El formulario actualiza la lista y las estadísticas sin recargar la página (HTMX).
-- Cada movimiento tiene título, importe, tipo (gasto/ingreso), categoría (Alimentación, Transporte, Vivienda, Ocio, Otros) y fecha. El importe acepta coma o punto decimal.
+```
+src/core/   dependency-free domain: types, dates, amounts, validation, reports
+src/db/     EntryRepository: the only place that touches SQLite (prepared statements, WAL)
+src/app/    Ledger: use cases (add entry, monthly report, dashboard)
+src/web/    Crow routes and template rendering
+templates/  layout, dashboard, month (page) and month_content (fragment swapped by HTMX)
+```
 
-## Prueba
+`core`, `db` and `app` form the `finances_core` library, which does not depend on Crow.
+
+## Usage
+
+- **Dashboard**: current month balance, trend over the last 6 months and expenses by category.
+- **This month / Other months**: list ordered by insertion date (newest first), with its statistics and a form to add entries. The form updates the list and statistics without reloading the page (HTMX).
+- Each entry has a title, amount, type (expense/income), category (Food, Transport, Housing, Leisure, Other) and date. The amount accepts a comma or a dot as the decimal separator, with at most two decimal places (`12,50`; `1.234` is rejected instead of being read as €1.23).
+
+## Tests
 
 ```sh
 ctest --preset release
 ```
 
-Levanta el servidor con una base de datos temporal y comprueba el dashboard, el alta, la validación y los totales.
+Starts the server with a temporary database and checks the dashboard, adding entries, validation and totals.
