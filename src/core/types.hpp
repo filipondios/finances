@@ -90,6 +90,24 @@ struct Entry {
   Date date;
 };
 
+struct Person {
+  std::int64_t id{};
+  std::string name;
+};
+
+struct Share {
+  std::int64_t person_id{};
+  std::string name;
+  Cents amount{};
+};
+
+struct PersonDebt {
+  std::int64_t id{};
+  std::string name;
+  Cents total{};
+  Cents month_total{};
+};
+
 struct MonthTotals {
   Cents income{};
   Cents expenses{};

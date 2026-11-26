@@ -17,6 +17,16 @@ constexpr auto kSchema = R"sql(
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS entries_by_date ON entries(date);
+    CREATE TABLE IF NOT EXISTS people (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+    );
+    CREATE TABLE IF NOT EXISTS entry_shares (
+        entry_id INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+        person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        PRIMARY KEY (entry_id, person_id)
+    );
 )sql";
 
 SQLite::Database open_database(const std::filesystem::path &file) {
@@ -24,6 +34,7 @@ SQLite::Database open_database(const std::filesystem::path &file) {
   db.setBusyTimeout(5'000);
   // WAL + NORMAL: writes do not need several fsyncs per insert.
   db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
+  db.exec("PRAGMA foreign_keys = ON;");
   db.exec(kSchema);
   return db;
 }
@@ -71,7 +82,29 @@ EntryRepository::EntryRepository(const std::filesystem::path &file)
                         "WHERE date >= ?1 AND date <= ?2 AND kind = 'expense' "
                         "GROUP BY category"},
       months_{db_, "SELECT DISTINCT substr(date, 1, 7) FROM entries "
-                   "ORDER BY 1 DESC"} {}
+                   "ORDER BY 1 DESC"},
+      people_{db_, "SELECT id, name FROM people ORDER BY name"},
+      add_person_{db_, "INSERT INTO people (name) VALUES (?)"},
+      remove_person_{db_, "DELETE FROM people WHERE id = ?"},
+      share_counts_{db_, "SELECT s.entry_id, COUNT(*) FROM entry_shares s "
+                          "JOIN entries e ON e.id = s.entry_id "
+                          "WHERE e.date >= ?1 AND e.date <= ?2 GROUP BY s.entry_id"},
+      shares_{db_, "SELECT s.person_id, p.name, s.amount_cents "
+                   "FROM entry_shares s JOIN people p ON p.id = s.person_id "
+                   "WHERE s.entry_id = ? ORDER BY p.name"},
+      share_remaining_{db_, "SELECT e.amount_cents - COALESCE("
+                             "(SELECT SUM(amount_cents) FROM entry_shares "
+                             "WHERE entry_id = e.id), 0) FROM entries e WHERE e.id = ?"},
+      add_share_{db_, "INSERT INTO entry_shares (entry_id, person_id, amount_cents) "
+                      "VALUES (?1, ?2, ?3)"},
+      remove_share_{db_, "DELETE FROM entry_shares "
+                         "WHERE entry_id = ?1 AND person_id = ?2"},
+      debts_{db_, "SELECT p.id, p.name, COALESCE(SUM(s.amount_cents), 0), "
+                  "COALESCE(SUM(CASE WHEN e.date >= ?1 AND e.date <= ?2 "
+                  "THEN s.amount_cents ELSE 0 END), 0) "
+                  "FROM people p LEFT JOIN entry_shares s ON s.person_id = p.id "
+                  "LEFT JOIN entries e ON e.id = s.entry_id "
+                  "GROUP BY p.id ORDER BY 3 DESC, p.name"} {}
 
 void EntryRepository::add(const NewEntry &entry) {
   const std::scoped_lock lock{mutex_};
@@ -162,6 +195,95 @@ std::vector<YearMonth> EntryRepository::months_with_entries() const {
   while (months_.executeStep())
     if (const auto m = parse_year_month(text_of(months_.getColumn(0))))
       out.push_back(*m);
+  return out;
+}
+
+std::vector<Person> EntryRepository::people() const {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{people_};
+
+  std::vector<Person> out;
+  while (people_.executeStep())
+    out.push_back({people_.getColumn(0).getInt64(), people_.getColumn(1).getString()});
+  return out;
+}
+
+std::int64_t EntryRepository::add_person(std::string_view name) {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{add_person_};
+  add_person_.bind(1, std::string{name});
+  add_person_.exec();
+  return db_.getLastInsertRowid();
+}
+
+void EntryRepository::remove_person(std::int64_t id) {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{remove_person_};
+  remove_person_.bind(1, id);
+  remove_person_.exec();
+}
+
+std::map<std::int64_t, int> EntryRepository::share_counts(YearMonth month) const {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{share_counts_};
+  share_counts_.bind(1, first_day_key(month));
+  share_counts_.bind(2, last_day_key(month));
+
+  std::map<std::int64_t, int> out;
+  while (share_counts_.executeStep())
+    out[share_counts_.getColumn(0).getInt64()] = share_counts_.getColumn(1).getInt();
+  return out;
+}
+
+std::vector<Share> EntryRepository::shares(std::int64_t entry_id) const {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{shares_};
+  shares_.bind(1, entry_id);
+
+  std::vector<Share> out;
+  while (shares_.executeStep())
+    out.push_back({shares_.getColumn(0).getInt64(), shares_.getColumn(1).getString(),
+                   shares_.getColumn(2).getInt64()});
+  return out;
+}
+
+bool EntryRepository::add_share(std::int64_t entry_id, std::int64_t person_id,
+                                Cents cents) {
+  const std::scoped_lock lock{mutex_};
+  {
+    const ResetOnExit reset{share_remaining_};
+    share_remaining_.bind(1, entry_id);
+    if (!share_remaining_.executeStep())
+      return false;
+    if (cents <= 0 || cents > share_remaining_.getColumn(0).getInt64())
+      return false;
+  }
+  const ResetOnExit reset{add_share_};
+  add_share_.bind(1, entry_id);
+  add_share_.bind(2, person_id);
+  add_share_.bind(3, cents);
+  add_share_.exec();
+  return true;
+}
+
+void EntryRepository::remove_share(std::int64_t entry_id, std::int64_t person_id) {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{remove_share_};
+  remove_share_.bind(1, entry_id);
+  remove_share_.bind(2, person_id);
+  remove_share_.exec();
+}
+
+std::vector<PersonDebt> EntryRepository::debts(YearMonth month) const {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{debts_};
+  debts_.bind(1, first_day_key(month));
+  debts_.bind(2, last_day_key(month));
+
+  std::vector<PersonDebt> out;
+  while (debts_.executeStep())
+    out.push_back({debts_.getColumn(0).getInt64(), debts_.getColumn(1).getString(),
+                   debts_.getColumn(2).getInt64(), debts_.getColumn(3).getInt64()});
   return out;
 }
 

@@ -32,6 +32,16 @@ public:
   [[nodiscard]] std::vector<YearMonth>
   selectable_months(YearMonth current) const;
 
+  [[nodiscard]] std::vector<Person> people() const;
+  [[nodiscard]] std::int64_t add_person(std::string_view name);
+  void remove_person(std::int64_t id);
+
+  [[nodiscard]] std::map<std::int64_t, int> share_counts(YearMonth month) const;
+  [[nodiscard]] std::vector<Share> shares(std::int64_t entry_id) const;
+  void add_share(std::int64_t entry_id, std::int64_t person_id, Cents cents);
+  void remove_share(std::int64_t entry_id, std::int64_t person_id);
+  [[nodiscard]] std::vector<PersonDebt> debts(YearMonth month) const;
+
 private:
   EntryRepository *repo_;
 };
