@@ -1,0 +1,18 @@
+<section class="panel" id="people-panel">
+  <div class="panel-head"><h2>People</h2><span class="muted">shares of paid entries</span></div>
+  <form class="entry-form" hx-post="/people" hx-target="#people-panel" hx-swap="outerHTML">
+    <label>Name<input name="name" maxlength="50" required placeholder="e.g. John Doe"></label>
+    <button class="btn primary" type="submit">Add person</button>
+    <p id="person-error" class="error"></p>
+  </form>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Person</th><th>This month</th><th>Total</th><th></th></tr></thead>
+      <tbody>
+        {{#people}}<tr><td>{{name}}</td><td>{{month_total}}</td><td>{{total}}</td>
+          <td><button class="btn delete" hx-delete="/people/{{id}}" hx-target="#people-panel" hx-swap="outerHTML" hx-confirm="Delete this person and their shares?">Delete</button></td></tr>{{/people}}
+        {{^people}}<tr><td colspan="4" class="muted">No people yet.</td></tr>{{/people}}
+      </tbody>
+    </table>
+  </div>
+</section>

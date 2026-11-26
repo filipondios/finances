@@ -32,7 +32,7 @@
     <div class="panel-head"><h2>Entries</h2><span class="muted">{{count}} records · newest dates first</span></div>
     <div class="table-scroll">
       <table>
-        <thead><tr><th>Title</th><th>Amount</th><th>Category</th><th>Date</th><th></th></tr></thead>
+        <thead><tr><th>Title</th><th>Amount</th><th>Category</th><th>Date</th><th></th><th></th></tr></thead>
         <tbody>
           {{#rows}}
           <tr>
@@ -40,10 +40,11 @@
             <td class="{{kind}}">{{amount}}</td>
             <td><span class="chip">{{category}}</span></td>
             <td>{{date}}</td>
+            <td><button class="btn share" onclick="openShareDialog()" hx-get="/entries/{{id}}/shares" hx-target="#share-dialog-content" hx-swap="innerHTML">{{share_label}}</button></td>
             <td><button class="btn delete" hx-delete="/entries/{{id}}" hx-target="#month-content" hx-swap="innerHTML" hx-confirm="Delete this entry?">Delete</button></td>
           </tr>
           {{/rows}}
-          {{^rows}}<tr><td colspan="5" class="muted">No entries yet this month. Add the first one above.</td></tr>{{/rows}}
+          {{^rows}}<tr><td colspan="6" class="muted">No entries yet this month. Add the first one above.</td></tr>{{/rows}}
         </tbody>
       </table>
     </div>

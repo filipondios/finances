@@ -5,6 +5,7 @@
 
 #include <crow.h>
 
+#include <map>
 #include <span>
 #include <string>
 
@@ -19,15 +20,24 @@ public:
 
   [[nodiscard]] crow::response
   dashboard_page(const Dashboard &dashboard, std::span<const YearMonth> months,
-                 YearMonth current) const;
+                 YearMonth current, std::span<const PersonDebt> debts) const;
 
   [[nodiscard]] crow::response
   month_page(const MonthReport &report, std::span<const YearMonth> months,
-             YearMonth current, Date today) const;
+             YearMonth current, Date today,
+             const std::map<std::int64_t, int> &share_counts) const;
 
   /// Only the contents of `#month-content`: what HTMX swaps in after
   /// adding a transaction.
-  [[nodiscard]] crow::response month_fragment(const MonthReport &report) const;
+  [[nodiscard]] crow::response
+  month_fragment(const MonthReport &report,
+                 const std::map<std::int64_t, int> &share_counts) const;
+
+  [[nodiscard]] crow::response people_panel(std::span<const PersonDebt> debts) const;
+
+  [[nodiscard]] crow::response shares_dialog(std::int64_t entry_id,
+                                             std::span<const Share> shares,
+                                             std::span<const Person> people) const;
 
 private:
   [[nodiscard]] crow::response
@@ -39,6 +49,8 @@ private:
   crow::mustache::template_t dashboard_;
   crow::mustache::template_t month_;
   crow::mustache::template_t month_content_;
+  crow::mustache::template_t people_;
+  crow::mustache::template_t shares_;
 };
 
 } // namespace fin::web

@@ -29,7 +29,18 @@
 
 <footer class="wrap muted foot">Everything is stored in <code>finances.db</code> (SQLite). Local data only.</footer>
 
+<dialog id="share-dialog" class="modal"><div id="share-dialog-content"></div></dialog>
+
 <script>
+function openShareDialog() { document.getElementById('share-dialog').showModal(); }
+function closeShareDialog() { document.getElementById('share-dialog').close(); }
+function toggleNewPerson() {
+  const select = document.getElementById('share-person');
+  const isNew = select && select.value === 'new';
+  document.getElementById('new-person-field').hidden = !isNew;
+  const form = document.querySelector('#share-dialog .entry-form');
+  if (form) form.classList.toggle('with-new', isNew);
+}
 function renderDashboardChart() {
   const el = document.getElementById('dashChart');
   if (!el || typeof Chart === 'undefined') return;

@@ -71,7 +71,8 @@ std::string history_chart_json(std::span<const HistoryPoint> history) {
   return chart.dump();
 }
 
-Context month_content_context(const MonthReport &r) {
+Context month_content_context(const MonthReport &r,
+                              const std::map<std::int64_t, int> &share_counts) {
   Context c;
   put_totals(c, r.summary);
   put_categories(c, r.summary);
@@ -88,9 +89,55 @@ Context month_content_context(const MonthReport &r) {
     row["kind_label"] = str(label(e.kind));
     row["category"] = str(info(e.category).label);
     row["date"] = format_date(e.date);
+    const int count = share_counts.contains(e.id) ? share_counts.at(e.id) : 0;
+    row["share_label"] = count == 0 ? "Not shared"
+                        : count == 1 ? "1 person"
+                                     : std::to_string(count) + " people";
     rows.push_back(std::move(row));
   }
   c["rows"] = std::move(rows);
+  return c;
+}
+
+std::string people_panel_html(const crow::mustache::template_t &tpl,
+                              std::span<const PersonDebt> debts) {
+  Context c;
+  List list;
+  for (const auto &d : debts) {
+    Context item;
+    item["id"] = d.id;
+    item["name"] = d.name;
+    item["month_total"] = format_money(d.month_total);
+    item["total"] = format_money(d.total);
+    list.push_back(std::move(item));
+  }
+  c["people"] = std::move(list);
+  return tpl.render_string(c);
+}
+
+Context shares_context(std::int64_t entry_id, std::span<const Share> shares,
+                       std::span<const Person> people) {
+  Context c;
+  c["entry_id"] = entry_id;
+  List list;
+  for (const auto &s : shares) {
+    Context item;
+    item["person_id"] = s.person_id;
+    item["name"] = s.name;
+    item["amount"] = format_money(s.amount);
+    list.push_back(std::move(item));
+  }
+  c["has_shares"] = !list.empty();
+  c["shares"] = std::move(list);
+
+  List options;
+  for (const auto &p : people) {
+    Context item;
+    item["id"] = p.id;
+    item["name"] = p.name;
+    options.push_back(std::move(item));
+  }
+  c["people"] = std::move(options);
   return c;
 }
 
@@ -100,7 +147,9 @@ Views::Views()
     : layout_{crow::mustache::load("layout.html")},
       dashboard_{crow::mustache::load("dashboard.html")},
       month_{crow::mustache::load("month.html")},
-      month_content_{crow::mustache::load("month_content.html")} {}
+      month_content_{crow::mustache::load("month_content.html")},
+      people_{crow::mustache::load("people.html")},
+      shares_{crow::mustache::load("shares.html")} {}
 
 crow::response Views::layout(std::string title, bool dashboard_active,
                              std::string content,
@@ -128,7 +177,8 @@ crow::response Views::layout(std::string title, bool dashboard_active,
 
 crow::response Views::dashboard_page(const Dashboard &dashboard,
                                      std::span<const YearMonth> months,
-                                     YearMonth current) const {
+                                     YearMonth current,
+                                     std::span<const PersonDebt> debts) const {
   Context c;
   put_totals(c, dashboard.current);
   put_categories(c, dashboard.current);
@@ -139,13 +189,15 @@ crow::response Views::dashboard_page(const Dashboard &dashboard,
   c["category_chart"] = category_chart_json(dashboard.current.by_category);
   c["history_category_chart"] = category_chart_json(dashboard.history_by_category);
   c["has_history_tops"] = !dashboard.history_by_category.empty();
+  c["people_panel"] = people_panel_html(people_, debts);
   return layout("Dashboard", true, dashboard_.render_string(c), months, current,
                 current);
 }
 
 crow::response Views::month_page(const MonthReport &report,
                                  std::span<const YearMonth> months,
-                                 YearMonth current, Date today) const {
+                                 YearMonth current, Date today,
+                                 const std::map<std::int64_t, int> &share_counts) const {
   const YearMonth month = report.summary.month;
   const YearMonth prev = month - std::chrono::months{1};
   const YearMonth next = month + std::chrono::months{1};
@@ -158,14 +210,28 @@ crow::response Views::month_page(const MonthReport &report,
   c["prev_label"] = format_month_label(prev);
   c["next_label"] = format_month_label(next);
   c["today"] = format_date(today);
-  c["month_content"] = month_content_.render_string(month_content_context(report));
+  c["month_content"] =
+      month_content_.render_string(month_content_context(report, share_counts));
 
   return layout("Expenses for " + format_month_label(month), false,
                 month_.render_string(c), months, month, current);
 }
 
-crow::response Views::month_fragment(const MonthReport &report) const {
-  return html(month_content_.render_string(month_content_context(report)));
+crow::response Views::month_fragment(
+    const MonthReport &report,
+    const std::map<std::int64_t, int> &share_counts) const {
+  return html(month_content_.render_string(
+      month_content_context(report, share_counts)));
+}
+
+crow::response Views::people_panel(std::span<const PersonDebt> debts) const {
+  return html(people_panel_html(people_, debts));
+}
+
+crow::response Views::shares_dialog(std::int64_t entry_id,
+                                    std::span<const Share> shares,
+                                    std::span<const Person> people) const {
+  return html(shares_.render_string(shares_context(entry_id, shares, people)));
 }
 
 } // namespace fin::web

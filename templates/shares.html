@@ -1,0 +1,32 @@
+<div class="panel">
+  <div class="panel-head"><h2>Shares</h2><button class="btn" type="button" onclick="closeShareDialog()">Close</button></div>
+  {{#has_shares}}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Person</th><th>Amount</th><th></th></tr></thead>
+      <tbody>
+        {{#shares}}
+        <tr>
+          <td>{{name}}</td>
+          <td>{{amount}}</td>
+          <td><button class="btn delete" hx-delete="/entries/{{entry_id}}/shares/{{person_id}}" hx-target="#share-dialog-content" hx-swap="innerHTML">Remove</button></td>
+        </tr>
+        {{/shares}}
+      </tbody>
+    </table>
+  </div>
+  {{/has_shares}}
+  {{^has_shares}}<p class="muted">This entry is not shared.</p>{{/has_shares}}
+  <h2>Add share</h2>
+  <form class="entry-form" hx-post="/entries/{{entry_id}}/shares" hx-target="#share-dialog-content" hx-swap="innerHTML">
+    <label>Person<select name="person_id" id="share-person" onchange="toggleNewPerson()">
+      <option value="" selected disabled>&lt;select person&gt;</option>
+      <option value="new">+ New person…</option>
+      {{#people}}<option value="{{id}}">{{name}}</option>{{/people}}
+    </select></label>
+    <label id="new-person-field" hidden>New name<input name="new_person" maxlength="50" placeholder="e.g. John Doe"></label>
+    <label>Amount<input name="amount" inputmode="decimal" required placeholder="0,00"></label>
+    <button class="btn primary" type="submit">Add</button>
+    <p id="share-error" class="error"></p>
+  </form>
+</div>
