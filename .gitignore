@@ -1,0 +1,5 @@
+/build/
+/CMakeUserPresets.json
+/finances.db*
+/server.log
+*.o

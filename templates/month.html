@@ -1,0 +1,81 @@
+<section class="hero">
+  <div>
+    <p class="eyebrow">Movimientos</p>
+    <h1>{{label}}</h1>
+  </div>
+  <div class="month-nav">
+    <a class="btn" href="/month/{{prev_month}}">← {{prev_label}}</a>
+    <a class="btn" href="/month/{{next_month}}">{{next_label}} →</a>
+  </div>
+</section>
+
+<form class="entry-form" id="entry-form" hx-post="/entries" hx-target="#month-content" hx-swap="innerHTML"
+      hx-on:entry-added="this.reset();document.getElementById('form-error').textContent=''">
+  <input type="hidden" name="month" value="{{month}}">
+  <label>Título<input name="title" maxlength="100" required placeholder="Ej. Compra en el súper"></label>
+  <label>Importe<input name="amount" inputmode="decimal" required placeholder="0,00"></label>
+  <label>Tipo<select name="kind"><option value="expense">Gasto</option><option value="income">Ingreso</option></select></label>
+  <label>Categoría<select name="category">
+    <option value="alimentacion">Alimentación</option>
+    <option value="transporte">Transporte</option>
+    <option value="vivienda">Vivienda</option>
+    <option value="ocio">Ocio</option>
+    <option value="otros">Otros</option>
+  </select></label>
+  <label>Fecha<input name="date" type="date" value="{{today}}" required></label>
+  <button class="btn primary" type="submit">Añadir</button>
+  <p id="form-error" class="error"></p>
+</form>
+
+<div id="month-content">
+  <section class="cards">
+    <div class="card"><span class="label">Ingresos</span><strong class="good">{{income}}</strong></div>
+    <div class="card"><span class="label">Gastos</span><strong class="bad">{{expenses}}</strong></div>
+    <div class="card"><span class="label">Balance</span><strong>{{balance}}</strong></div>
+    <div class="card"><span class="label">Movimientos</span><strong>{{count}}</strong></div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>Gastos por categoría</h2>
+      {{#has_tops}}
+      <div class="chart"><canvas id="catChart"></canvas></div>
+      <script type="application/json" id="catChartData">{{{chart}}}</script>
+      {{/has_tops}}
+      {{^has_tops}}<p class="muted">Sin gastos este mes.</p>{{/has_tops}}
+    </div>
+    <div class="panel">
+      <h2>Detalle por categoría</h2>
+      {{#has_tops}}
+      <ul class="bars">
+        {{#tops}}
+        <li><div class="bar-head"><span>{{name}}</span><strong>{{amount}}</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width: {{pct}}%"></div></div></li>
+        {{/tops}}
+      </ul>
+      {{/has_tops}}
+      {{^has_tops}}<p class="muted">Sin gastos este mes.</p>{{/has_tops}}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Listado</h2><span class="muted">{{count}} registros · más recientes primero</span></div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Título</th><th>Importe</th><th>Categoría</th><th>Fecha</th><th>Añadido</th></tr></thead>
+        <tbody>
+          {{#rows}}
+          <tr>
+            <td><span class="badge {{kind}}">{{kind_label}}</span> {{title}}</td>
+            <td class="{{kind}}">{{amount}}</td>
+            <td><span class="chip">{{category}}</span></td>
+            <td>{{date}}</td>
+            <td class="muted small">{{added}}</td>
+          </tr>
+          {{/rows}}
+          {{^rows}}<tr><td colspan="5" class="muted">Todavía no hay movimientos este mes. Añade el primero arriba.</td></tr>{{/rows}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
