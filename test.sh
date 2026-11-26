@@ -74,4 +74,66 @@ newest="$(grep -n 'Newest date' "$tmp/out.html" | cut -d: -f1 | head -1)"
 older="$(grep -n 'Nominal' "$tmp/out.html" | cut -d: -f1 | head -1)"
 [[ "$newest" -lt "$older" ]] || { echo "Entries are not ordered by date"; exit 1; }
 
-echo "OK: dashboard, entry list, add, delete, validation, date order and statistics"
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' -X POST http://127.0.0.1:8080/people -d 'name=Una+persona')"
+[[ "$code" == 200 ]] || { echo "Add person returned $code"; exit 1; }
+people_count="$(sqlite3 "$tmp/finances.db" 'SELECT COUNT(*) FROM people')"
+[[ "$people_count" == 1 ]] || { echo "Person was not saved"; exit 1; }
+body="$(curl -fsS http://127.0.0.1:8080/)"
+grep -q '<h2>People</h2>' <<<"$body"
+grep -q 'Una persona' <<<"$body"
+
+code="$(curl -sS -D "$tmp/headers.txt" -o "$tmp/out.html" -w '%{http_code}' -X POST http://127.0.0.1:8080/people -d 'name=')"
+[[ "$code" == 200 ]] || { echo "Empty person returned $code"; exit 1; }
+grep -qi 'HX-Reswap: innerHTML' "$tmp/headers.txt"
+grep -q 'The name is required' "$tmp/out.html"
+
+person_id="$(sqlite3 "$tmp/finances.db" "SELECT id FROM people WHERE name='Una persona'")"
+entry_id="$(sqlite3 "$tmp/finances.db" "SELECT id FROM entries WHERE title='Newest date'")"
+
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' "http://127.0.0.1:8080/entries/$entry_id/shares")"
+[[ "$code" == 200 ]] || { echo "Shares dialog returned $code"; exit 1; }
+grep -q 'This entry is not shared' "$tmp/out.html"
+grep -q 'value="new"' "$tmp/out.html"
+grep -q 'Add share' "$tmp/out.html"
+
+code="$(curl -sS -D "$tmp/headers.txt" -o "$tmp/out.html" -w '%{http_code}' -X POST "http://127.0.0.1:8080/entries/$entry_id/shares" -d "person_id=$person_id&amount=0,50")"
+[[ "$code" == 200 ]] || { echo "Add share returned $code"; exit 1; }
+grep -qi 'HX-Refresh: true' "$tmp/headers.txt"
+shared="$(sqlite3 "$tmp/finances.db" "SELECT amount_cents FROM entry_shares WHERE entry_id=$entry_id AND person_id=$person_id")"
+[[ "$shared" == 50 ]] || { echo "Share saved incorrectly: $shared"; exit 1; }
+body="$(curl -fsS "http://127.0.0.1:8080/entries/$entry_id/shares")"
+grep -q '<th>Person</th>' <<<"$body"
+
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' -X POST "http://127.0.0.1:8080/entries/$entry_id/shares" -d "person_id=$person_id&amount=2")"
+[[ "$code" == 200 ]] || { echo "Oversized share returned $code"; exit 1; }
+grep -q 'The shared amount exceeds the entry total' "$tmp/out.html"
+
+body="$(curl -fsS http://127.0.0.1:8080/)"
+grep -q 'Una persona' <<<"$body"
+grep -q '0,50' <<<"$body"
+body="$(curl -fsS "http://127.0.0.1:8080/month/$month")"
+grep -q '1 person' <<<"$body"
+
+code="$(curl -sS -D "$tmp/headers.txt" -o "$tmp/out.html" -w '%{http_code}' -X DELETE "http://127.0.0.1:8080/entries/$entry_id/shares/$person_id")"
+[[ "$code" == 200 ]] || { echo "Delete share returned $code"; exit 1; }
+grep -qi 'HX-Refresh: true' "$tmp/headers.txt"
+count="$(sqlite3 "$tmp/finances.db" 'SELECT COUNT(*) FROM entry_shares')"
+[[ "$count" == 0 ]] || { echo "Expected no shares after delete, got $count"; exit 1; }
+
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' -X POST "http://127.0.0.1:8080/entries/$entry_id/shares" -d "person_id=new&new_person=Bob&amount=0,25")"
+[[ "$code" == 200 ]] || { echo "New person share returned $code"; exit 1; }
+shared="$(sqlite3 "$tmp/finances.db" "SELECT s.amount_cents FROM entry_shares s JOIN people p ON p.id=s.person_id WHERE p.name='Bob'")"
+[[ "$shared" == 25 ]] || { echo "Share for new person saved incorrectly: $shared"; exit 1; }
+body="$(curl -fsS http://127.0.0.1:8080/)"
+grep -q 'Bob' <<<"$body"
+
+bob_id="$(sqlite3 "$tmp/finances.db" "SELECT id FROM people WHERE name='Bob'")"
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' -X DELETE "http://127.0.0.1:8080/people/$bob_id")"
+[[ "$code" == 200 ]] || { echo "Delete person returned $code"; exit 1; }
+! grep -q 'Bob' "$tmp/out.html"
+count="$(sqlite3 "$tmp/finances.db" 'SELECT COUNT(*) FROM entry_shares')"
+[[ "$count" == 0 ]] || { echo "Shares were not cascaded, got $count"; exit 1; }
+count="$(sqlite3 "$tmp/finances.db" 'SELECT COUNT(*) FROM people')"
+[[ "$count" == 1 ]] || { echo "Expected 1 person after delete, got $count"; exit 1; }
+
+echo "OK: dashboard, entries, deletion, people, shares, validation, date order and statistics"
