@@ -23,6 +23,9 @@ public:
   EntryRepository &operator=(const EntryRepository &) = delete;
   void add(const NewEntry &entry);
 
+  /// Deletes an entry and returns its month, or nullopt if it does not exist.
+  [[nodiscard]] std::optional<YearMonth> remove(std::int64_t id);
+
   /// Entries for a month, most recently inserted first.
   [[nodiscard]] std::vector<Entry> entries_in(YearMonth month) const;
 
@@ -31,8 +34,9 @@ public:
   [[nodiscard]] std::map<YearMonth, MonthTotals>
   totals_between(YearMonth first, YearMonth last) const;
 
-  /// Expenses for a month by category.
-  [[nodiscard]] CategoryTotals expenses_by_category(YearMonth month) const;
+  /// Expenses in a date range by category.
+  [[nodiscard]] CategoryTotals expenses_by_category(YearMonth first,
+                                                    YearMonth last) const;
 
   /// Months (newest first) with at least one entry.
   [[nodiscard]] std::vector<YearMonth> months_with_entries() const;
@@ -41,6 +45,7 @@ private:
   mutable std::mutex mutex_;
   mutable SQLite::Database db_;
   mutable SQLite::Statement insert_;
+  mutable SQLite::Statement remove_;
   mutable SQLite::Statement list_;
   mutable SQLite::Statement totals_;
   mutable SQLite::Statement by_category_;

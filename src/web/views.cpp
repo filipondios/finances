@@ -45,9 +45,9 @@ void put_categories(Context &c, const MonthSummary &s) {
 }
 
 /// Doughnut chart data, serialized for the <script type="application/json"> block.
-std::string category_chart_json(const MonthSummary &s) {
+std::string category_chart_json(const std::vector<CategoryShare> &shares) {
   List labels, values;
-  for (const auto &share : s.by_category) {
+  for (const auto &share : shares) {
     labels.push_back(str(info(share.category).label));
     values.push_back(euros(share.amount));
   }
@@ -75,19 +75,19 @@ Context month_content_context(const MonthReport &r) {
   Context c;
   put_totals(c, r.summary);
   put_categories(c, r.summary);
-  c["chart"] = category_chart_json(r.summary);
+  c["chart"] = category_chart_json(r.summary.by_category);
 
   List rows;
   rows.reserve(r.entries.size());
   for (const auto &e : r.entries) {
     Context row;
+    row["id"] = e.id;
     row["title"] = e.title;
     row["amount"] = format_money(e.amount);
     row["kind"] = str(key(e.kind));
     row["kind_label"] = str(label(e.kind));
     row["category"] = str(info(e.category).label);
     row["date"] = format_date(e.date);
-    row["added"] = e.added;
     rows.push_back(std::move(row));
   }
   c["rows"] = std::move(rows);
@@ -134,6 +134,11 @@ crow::response Views::dashboard_page(const Dashboard &dashboard,
   put_categories(c, dashboard.current);
   c["current_month"] = format_month_key(current);
   c["chart"] = history_chart_json(dashboard.history);
+  c["current_chart"] =
+      history_chart_json(std::span<const HistoryPoint>{&dashboard.history.back(), 1});
+  c["category_chart"] = category_chart_json(dashboard.current.by_category);
+  c["history_category_chart"] = category_chart_json(dashboard.history_by_category);
+  c["has_history_tops"] = !dashboard.history_by_category.empty();
   return layout("Dashboard", true, dashboard_.render_string(c), months, current,
                 current);
 }

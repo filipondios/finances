@@ -32,6 +32,7 @@ struct HistoryPoint {
 struct Dashboard {
   MonthSummary current;
   std::vector<HistoryPoint> history; ///< Oldest month first, current month last.
+  std::vector<CategoryShare> history_by_category;
 };
 
 /// Sorts categories by descending spend (ties broken by enum order, so the

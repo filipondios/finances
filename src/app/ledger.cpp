@@ -11,6 +11,10 @@ YearMonth Ledger::add_entry(const EntryForm &form) {
   return month_of(entry.date);
 }
 
+std::optional<YearMonth> Ledger::remove_entry(std::int64_t id) {
+  return repo_->remove(id);
+}
+
 MonthReport Ledger::month_report(YearMonth month) const {
   return make_month_report(month, repo_->entries_in(month));
 }
@@ -30,7 +34,9 @@ Dashboard Ledger::dashboard(YearMonth current) const {
   const MonthTotals &now = out.history.back().totals;
   // clang-format off
   out.current = {.month = current, .totals = now, 
-    .by_category = rank_categories(repo_->expenses_by_category(current))};
+    .by_category = rank_categories(repo_->expenses_by_category(current, current))};
+  out.history_by_category =
+      rank_categories(repo_->expenses_by_category(first, current));
   return out;
 }
 

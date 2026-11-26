@@ -63,6 +63,14 @@ void register_routes(crow::SimpleApp &app, Ledger &ledger, const Views &views) {
           return form_error("Could not save the transaction.");
         }
       });
+
+  CROW_ROUTE(app, "/entries/<int>")
+      .methods(crow::HTTPMethod::DELETE)([&](int id) {
+        const auto month = ledger.remove_entry(id);
+        if (!month)
+          return crow::response{404, "Entry not found"};
+        return views.month_fragment(ledger.month_report(*month));
+      });
 }
 
 } // namespace fin::web

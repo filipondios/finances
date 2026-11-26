@@ -57,12 +57,13 @@ EntryRepository::EntryRepository(const std::filesystem::path &file)
     : db_{open_database(file)},
       insert_{db_, "INSERT INTO entries (title, amount_cents, kind, category, "
                    "date) VALUES (?1, ?2, ?3, ?4, ?5)"},
+      remove_{db_, "DELETE FROM entries WHERE id = ? RETURNING substr(date, 1, 7)"},
       // `date` is "YYYY-MM-DD": comparing against the month range lets the
       // query use the entries_by_date index (with substr(date,1,7)=? it would
       // have to scan the whole table).
-      list_{db_, "SELECT id, title, amount_cents, kind, category, date, "
-                 "created_at FROM entries WHERE date >= ?1 AND date <= ?2 "
-                 "ORDER BY created_at DESC, id DESC"},
+      list_{db_, "SELECT id, title, amount_cents, kind, category, date "
+                 "FROM entries WHERE date >= ?1 AND date <= ?2 "
+                 "ORDER BY date DESC, id DESC"},
       totals_{db_, "SELECT substr(date, 1, 7), kind, SUM(amount_cents), "
                    "COUNT(*) FROM entries WHERE date >= ?1 AND date <= ?2 "
                    "GROUP BY 1, 2"},
@@ -83,6 +84,15 @@ void EntryRepository::add(const NewEntry &entry) {
   insert_.exec();
 }
 
+std::optional<YearMonth> EntryRepository::remove(std::int64_t id) {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{remove_};
+  remove_.bind(1, id);
+  if (!remove_.executeStep())
+    return std::nullopt;
+  return parse_year_month(text_of(remove_.getColumn(0)));
+}
+
 std::vector<Entry> EntryRepository::entries_in(YearMonth month) const {
   const std::scoped_lock lock{mutex_};
   const ResetOnExit reset{list_};
@@ -99,7 +109,6 @@ std::vector<Entry> EntryRepository::entries_in(YearMonth month) const {
     e.category = category_from_key(text_of(list_.getColumn(4)))
                      .value_or(Category::other);
     e.date = parse_stored_date(text_of(list_.getColumn(5)));
-    e.added = std::string{text_of(list_.getColumn(6)).substr(0, 16)};
     out.push_back(std::move(e));
   }
   return out;
@@ -128,11 +137,12 @@ EntryRepository::totals_between(YearMonth first, YearMonth last) const {
   return out;
 }
 
-CategoryTotals EntryRepository::expenses_by_category(YearMonth month) const {
+CategoryTotals EntryRepository::expenses_by_category(YearMonth first,
+                                                     YearMonth last) const {
   const std::scoped_lock lock{mutex_};
   const ResetOnExit reset{by_category_};
-  by_category_.bind(1, first_day_key(month));
-  by_category_.bind(2, last_day_key(month));
+  by_category_.bind(1, first_day_key(first));
+  by_category_.bind(2, last_day_key(last));
 
   CategoryTotals out{};
   while (by_category_.executeStep()) {

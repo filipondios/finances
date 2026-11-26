@@ -88,7 +88,6 @@ struct Entry {
   Kind kind{};
   Category category{};
   Date date;
-  std::string added;
 };
 
 struct MonthTotals {

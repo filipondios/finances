@@ -18,6 +18,9 @@ public:
   /// Throws `ValidationError` if the form is not valid.
   YearMonth add_entry(const EntryForm &form);
 
+  /// Deletes an entry and returns the month it belonged to.
+  [[nodiscard]] std::optional<YearMonth> remove_entry(std::int64_t id);
+
   /// Entries for a month with their totals and category breakdown.
   [[nodiscard]] MonthReport month_report(YearMonth month) const;
 
