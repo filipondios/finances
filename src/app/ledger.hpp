@@ -1,9 +1,16 @@
 #pragma once
 
+#include "core/calendar.hpp"
 #include "core/entry_form.hpp"
 #include "core/report.hpp"
 #include "core/types.hpp"
 #include "db/entry_repository.hpp"
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <optional>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace fin {
@@ -12,7 +19,15 @@ namespace fin {
 class Ledger {
 public:
   static constexpr int kHistoryMonths = 6;
-  explicit Ledger(EntryRepository &repo) noexcept : repo_{&repo} {}
+  /// Source of "today"; replaceable so tests do not depend on the wall clock.
+  using Clock = std::function<Date()>;
+
+  /// `repo` must outlive the ledger.
+  explicit Ledger(EntryRepository &repo, Clock clock = &fin::today)
+      : repo_{repo}, clock_{std::move(clock)} {}
+
+  /// Today's date according to the clock.
+  [[nodiscard]] Date today() const { return clock_(); }
 
   /// Validates and saves an entry; returns the month it belongs to.
   /// Throws `ValidationError` if the form is not valid.
@@ -47,7 +62,8 @@ public:
   [[nodiscard]] std::vector<PersonDebt> debts(YearMonth month) const;
 
 private:
-  EntryRepository *repo_;
+  EntryRepository &repo_;
+  Clock clock_;
 };
 
 } // namespace fin

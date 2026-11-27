@@ -9,22 +9,22 @@ namespace fin {
 
 YearMonth Ledger::add_entry(const EntryForm &form) {
   const NewEntry entry = validate(form);
-  repo_->add(entry);
+  repo_.add(entry);
   return month_of(entry.date);
 }
 
 std::optional<YearMonth> Ledger::remove_entry(std::int64_t id) {
-  return repo_->remove(id);
+  return repo_.remove(id);
 }
 
 MonthReport Ledger::month_report(YearMonth month) const {
-  return make_month_report(month, repo_->entries_in(month));
+  return make_month_report(month, repo_.entries_in(month));
 }
 
 Dashboard Ledger::dashboard(YearMonth current) const {
   using std::chrono::months;
   const YearMonth first = current - months{kHistoryMonths - 1};
-  const auto totals = repo_->totals_between(first, current);
+  const auto totals = repo_.totals_between(first, current);
 
   Dashboard out;
   out.history.reserve(kHistoryMonths);
@@ -37,14 +37,14 @@ Dashboard Ledger::dashboard(YearMonth current) const {
   out.current = {.month = current,
                  .totals = now,
                  .by_category = rank_categories(
-                     repo_->expenses_by_category(current, current))};
+                     repo_.expenses_by_category(current, current))};
   out.history_by_category =
-      rank_categories(repo_->expenses_by_category(first, current));
+      rank_categories(repo_.expenses_by_category(first, current));
   return out;
 }
 
 std::vector<YearMonth> Ledger::selectable_months(YearMonth current) const {
-  auto months = repo_->months_with_entries();
+  auto months = repo_.months_with_entries();
   months.push_back(current);
   std::ranges::sort(months, std::greater{});
   const auto dup = std::ranges::unique(months);
@@ -52,7 +52,7 @@ std::vector<YearMonth> Ledger::selectable_months(YearMonth current) const {
   return months;
 }
 
-std::vector<Person> Ledger::people() const { return repo_->people(); }
+std::vector<Person> Ledger::people() const { return repo_.people(); }
 
 namespace {
 std::string_view valid_person_name(std::string_view raw) {
@@ -67,34 +67,34 @@ std::string_view valid_person_name(std::string_view raw) {
 } // namespace
 
 std::int64_t Ledger::add_person(std::string_view raw_name) {
-  return repo_->add_person(valid_person_name(raw_name));
+  return repo_.add_person(valid_person_name(raw_name));
 }
 
-void Ledger::remove_person(std::int64_t id) { repo_->remove_person(id); }
+void Ledger::remove_person(std::int64_t id) { repo_.remove_person(id); }
 
 std::map<std::int64_t, int> Ledger::share_counts(YearMonth month) const {
-  return repo_->share_counts(month);
+  return repo_.share_counts(month);
 }
 
 std::vector<Share> Ledger::shares(std::int64_t entry_id) const {
-  return repo_->shares(entry_id);
+  return repo_.shares(entry_id);
 }
 
 void Ledger::add_share(std::int64_t entry_id, std::int64_t person_id, Cents cents) {
-  repo_->add_share(entry_id, person_id, cents);
+  repo_.add_share(entry_id, person_id, cents);
 }
 
 void Ledger::add_share_with_new_person(std::int64_t entry_id,
                                        std::string_view raw_name, Cents cents) {
-  repo_->add_share_with_new_person(entry_id, valid_person_name(raw_name), cents);
+  repo_.add_share_with_new_person(entry_id, valid_person_name(raw_name), cents);
 }
 
 void Ledger::remove_share(std::int64_t entry_id, std::int64_t person_id) {
-  repo_->remove_share(entry_id, person_id);
+  repo_.remove_share(entry_id, person_id);
 }
 
 std::vector<PersonDebt> Ledger::debts(YearMonth month) const {
-  return repo_->debts(month);
+  return repo_.debts(month);
 }
 
 } // namespace fin

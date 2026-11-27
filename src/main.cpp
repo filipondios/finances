@@ -66,7 +66,7 @@ int main() {
     fin::web::App app;
     app.get_middleware<fin::web::LocalGuard>().port = port;
     fin::web::register_routes(app, ledger, views);
-    app.port(port).bindaddr("127.0.0.1").multithreaded().run();
+    app.port(port).bindaddr("127.0.0.1").concurrency(2).run();
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << '\n';
     return 1;
