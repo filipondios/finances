@@ -22,39 +22,6 @@ Open <http://127.0.0.1:8080>. The executable reads `templates/` and `static/` an
 
 The server only answers `Host: 127.0.0.1:<port>` / `localhost:<port>`, and non-GET requests must carry `HX-Request: true` (htmx adds it), which blocks cross-site forms and DNS rebinding. CMake generates `build/release/compile_commands.json` (or `build/debug/` with the `debug` preset).
 
-## Showcase
-
-`finances.db` in the project root is a generated sample database: 163 English entries (Jun–Nov 2026), 30 shared parts and three people (Alice, Bob, Carol). It is git-ignored, so it never lands in a commit. Run the app from the project root as usual, optionally on another port:
-
-```sh
-FINANCES_PORT=18080 ./build/release/finances
-```
-
-Open <http://127.0.0.1:18080>. The months are deliberately uneven — August ends in the red — so the charts show clear differences.
-
-Dashboard (full page):
-
-![Dashboard with the sample data](docs/dashboard.png)
-
-October 2026 listing (full page):
-
-![October 2026 entries](docs/october-2026.png)
-
-| Month | Income | Expenses | Balance |
-|---|---:|---:|---:|
-| 2026-06 | 1.850,00 € | 520,30 € | 1.329,70 € |
-| 2026-07 | 1.920,00 € | 1.184,30 € | 735,70 € |
-| 2026-08 | 1.450,00 € | 1.682,45 € | -232,45 € |
-| 2026-09 | 2.100,00 € | 622,95 € | 1.477,05 € |
-| 2026-10 | 1.780,00 € | 1.423,15 € | 356,85 € |
-| 2026-11 | 2.250,00 € | 952,55 € | 1.297,45 € |
-
-| Person | This month | Total |
-|---|---:|---:|
-| Alice | 126,66 € | 785,51 € |
-| Bob | 1,95 € | 312,14 € |
-| Carol | 0,00 € | 106,40 € |
-
 ## Usage
 
 - **Dashboard**: current month balance, trend over the last 6 months and expenses by category.
