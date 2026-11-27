@@ -15,7 +15,7 @@ struct EntryForm {
   std::string_view month;
 };
 
-inline constexpr std::size_t kMaxTitleChars = 100; ///< Unicode code points.
+inline constexpr std::size_t kMaxTitleChars = 100;
 [[nodiscard]] NewEntry validate(const EntryForm &form);
 
 } // namespace fin

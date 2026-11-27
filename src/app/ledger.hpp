@@ -15,12 +15,10 @@
 
 namespace fin {
 
-/// Application use cases. Knows nothing about HTTP or templates.
 class Ledger {
 public:
-  static constexpr int kHistoryMonths = 6;
-  /// Source of "today"; replaceable so tests do not depend on the wall clock.
   using Clock = std::function<Date()>;
+  static constexpr int kHistoryMonths = 6;
 
   /// `repo` must outlive the ledger.
   explicit Ledger(EntryRepository &repo, Clock clock = &fin::today)
@@ -53,9 +51,8 @@ public:
 
   [[nodiscard]] std::map<std::int64_t, int> share_counts(YearMonth month) const;
   [[nodiscard]] std::vector<Share> shares(std::int64_t entry_id) const;
-  /// Throws `ValidationError` (unknown person/entry, duplicate, over the total).
+
   void add_share(std::int64_t entry_id, std::int64_t person_id, Cents cents);
-  /// Like `add_share` for a person that does not exist yet; all or nothing.
   void add_share_with_new_person(std::int64_t entry_id, std::string_view name,
                                  Cents cents);
   void remove_share(std::int64_t entry_id, std::int64_t person_id);

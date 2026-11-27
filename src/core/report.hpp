@@ -1,27 +1,25 @@
 #pragma once
 
 #include "core/types.hpp"
-
 #include <vector>
 
 namespace fin {
 
-/// Share of a month's expenses taken by one category.
 struct CategoryShare {
   Category category{};
   Cents amount{};
-  int percent{}; ///< Rounded to the nearest integer.
+  int percent{};
 };
 
 struct MonthSummary {
   YearMonth month{};
   MonthTotals totals;
-  std::vector<CategoryShare> by_category; ///< Expenses only, largest first.
+  std::vector<CategoryShare> by_category;
 };
 
 struct MonthReport {
   MonthSummary summary;
-  std::vector<Entry> entries; ///< Newest date first (ties: latest inserted).
+  std::vector<Entry> entries;
 };
 
 struct HistoryPoint {
@@ -31,7 +29,7 @@ struct HistoryPoint {
 
 struct Dashboard {
   MonthSummary current;
-  std::vector<HistoryPoint> history; ///< Oldest month first, current month last.
+  std::vector<HistoryPoint> history;
   std::vector<CategoryShare> history_by_category;
 };
 

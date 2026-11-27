@@ -7,9 +7,9 @@ Local app to record expenses and income and view them by month. C++20 with Crow,
 You need CMake (≥ 3.23), Conan 2 and a compiler with C++20 (`std::format` and the `std::chrono` calendar: GCC ≥ 13, Clang ≥ 17 with libstdc++ 13, MSVC 2022). Crow, Asio and SQLiteCpp (with SQLite3) are managed with Conan; HTMX and Chart.js are served as local static files.
 
 ```sh
-conan profile detect          # first time only
+conan profile detect # first time only
 conan install . --output-folder=build --build=missing
-conan install . --output-folder=build --build=missing -s build_type=Debug   # only if you use the debug preset
+conan install . --output-folder=build --build=missing -s build_type=Debug # only if you use the debug preset
 cmake --preset release
 cmake --build --preset release
 ./build/release/finances
