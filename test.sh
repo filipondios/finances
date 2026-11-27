@@ -245,6 +245,30 @@ count="$(sqlite3 "$tmp/finances.db" 'SELECT COUNT(*) FROM people')"
   exit 1
 }
 
+# Input rules: titles count characters (not bytes), amounts accept thousands separators.
+nn="$(printf 'ñ%.0s' $(seq 1 60))" # 60 chars, 120 bytes
+code="$(post --data-urlencode "title=$nn" -d "amount=1.234,56&kind=expense&category=ocio&date=$month-10&month=$month")"
+[[ "$code" == 200 ]] || { echo "Multibyte title returned $code"; exit 1; }
+cents="$(sqlite3 "$tmp/finances.db" "SELECT amount_cents FROM entries WHERE title LIKE 'ññññ%'")"
+[[ "$cents" == 123456 ]] || { echo "1.234,56 saved as: $cents"; exit 1; }
+code="$(post --data-urlencode "title=$(printf 'ñ%.0s' $(seq 1 101))" -d "amount=1&kind=expense&category=ocio&date=$month-10&month=$month")"
+grep -q 'maximum 100 characters' "$tmp/out.html" || { echo "101-char title accepted"; exit 1; }
+code="$(post --data-urlencode "title=a"$'\t'"b" -d "amount=1&kind=expense&category=ocio&date=$month-10&month=$month")"
+grep -q 'invalid characters' "$tmp/out.html" || { echo "Control char in title accepted"; exit 1; }
+code="$(post -d "title=Ambiguous&amount=1.234&kind=expense&category=ocio&date=$month-10&month=$month")"
+grep -q 'The amount is not valid' "$tmp/out.html" || { echo "1.234 accepted"; exit 1; }
+code="$(post -d "title=Millions&amount=1.234.567&kind=expense&category=ocio&date=$month-11&month=$month")"
+cents="$(sqlite3 "$tmp/finances.db" "SELECT amount_cents FROM entries WHERE title='Millions'")"
+[[ "$cents" == 123456700 ]] || { echo "1.234.567 saved as: $cents"; exit 1; }
+
+# Month navigation stops at the supported years instead of linking to 404s.
+body="$(curl -fsS "http://127.0.0.1:$port/month/9999-12")"
+! grep -q '10000-01' <<<"$body" || { echo "Link past year 9999"; exit 1; }
+grep -q '/month/9999-11' <<<"$body"
+body="$(curl -fsS "http://127.0.0.1:$port/month/0000-01")"
+! grep -q -- '-001' <<<"$body" || { echo "Link before year 0"; exit 1; }
+grep -q '/month/0000-02' <<<"$body"
+
 # Guard: mutating requests need HX-Request; Host must be loopback:port.
 code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:$port/people -d 'name=Evil')"
 [[ "$code" == 403 ]] || {
