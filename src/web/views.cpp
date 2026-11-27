@@ -3,7 +3,13 @@
 #include "core/calendar.hpp"
 #include "core/money.hpp"
 
+#include <cstdint>
+#include <map>
+#include <span>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace fin::web {
 namespace {
@@ -89,7 +95,8 @@ Context month_content_context(const MonthReport &r,
     row["kind_label"] = str(label(e.kind));
     row["category"] = str(info(e.category).label);
     row["date"] = format_date(e.date);
-    const int count = share_counts.contains(e.id) ? share_counts.at(e.id) : 0;
+    const auto shared = share_counts.find(e.id);
+    const int count = shared != share_counts.end() ? shared->second : 0;
     row["share_label"] = count == 0 ? "Not shared"
                         : count == 1 ? "1 person"
                                      : std::to_string(count) + " people";

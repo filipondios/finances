@@ -220,6 +220,9 @@ expect_share_error "$entry_id" "person_id=&amount=0,10" 'Select a person'
 expect_share_error "$entry_id" "person_id=new&new_person=Ghost&amount=5" 'exceeds the entry total'
 expect_share_error "$entry_id" "person_id=new&new_person=Ghost&amount=abc" 'The amount is not valid'
 expect_share_error "$entry_id" "person_id=new&new_person=Bob&amount=0,01" 'already exists'
+expect_share_error "$entry_id" "person_id=%2B$bob_id&amount=0,10" 'Invalid id'   # "+N" no longer slips through
+expect_share_error "$entry_id" "person_id=abc&amount=0,10" 'Invalid id'
+expect_share_error "$entry_id" "person_id=0&amount=0,10" 'Invalid id'
 expect_share_error 999999 "person_id=$bob_id&amount=0,01" 'Entry not found'
 count="$(sqlite3 "$tmp/finances.db" "SELECT COUNT(*) FROM people WHERE name='Ghost'")"
 [[ "$count" == 0 ]] || {

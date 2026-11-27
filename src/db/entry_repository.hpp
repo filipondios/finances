@@ -2,9 +2,12 @@
 
 #include "core/types.hpp"
 #include <SQLiteCpp/SQLiteCpp.h>
+#include <cstdint>
 #include <filesystem>
 #include <map>
 #include <mutex>
+#include <optional>
+#include <string_view>
 #include <vector>
 
 namespace fin {
