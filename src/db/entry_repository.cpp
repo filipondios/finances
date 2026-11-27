@@ -59,7 +59,31 @@ constexpr auto kMigration2 = R"sql(
     CREATE INDEX entries_by_date ON entries(date);
 )sql";
 
-constexpr std::array<std::string_view, 2> kMigrations{kMigration1, kMigration2};
+/// Migration 3: the category list lives in code (`kCategories`) only. A CHECK
+/// here would reject any category added later, and migrations are frozen.
+/// Same table rebuild as migration 2.
+constexpr auto kMigration3 = R"sql(
+    CREATE TABLE entries_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        kind TEXT NOT NULL CHECK (kind IN ('expense', 'income')),
+        category TEXT NOT NULL,
+        date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT INTO entries_new (id, title, amount_cents, kind, category, date, created_at)
+        SELECT id, title, amount_cents, kind, category, date, created_at FROM entries;
+    UPDATE sqlite_sequence SET seq = MAX(seq, COALESCE(
+        (SELECT seq FROM sqlite_sequence WHERE name = 'entries'), 0))
+        WHERE name = 'entries_new';
+    DROP TABLE entries;
+    ALTER TABLE entries_new RENAME TO entries;
+    CREATE INDEX entries_by_date ON entries(date);
+)sql";
+
+constexpr std::array<std::string_view, 3> kMigrations{kMigration1, kMigration2,
+                                                      kMigration3};
 
 /// Applies the pending migrations, each in its own transaction, tracking the
 /// schema version in `PRAGMA user_version`.
