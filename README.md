@@ -15,19 +15,9 @@ cmake --build --preset release
 ./build/release/finances
 ```
 
-Open <http://127.0.0.1:8080>. The executable creates `finances.db` in the current working directory, so run it from here. CMake generates `build/release/compile_commands.json` (or `build/debug/` with the `debug` preset).
+Open <http://127.0.0.1:8080>. The executable reads `templates/` and `static/` and creates `finances.db` in the current working directory, so run it from here (it refuses to start if the templates are missing) or set `FINANCES_HOME=/path/to/project`. `FINANCES_PORT` changes the port (default 8080).
 
-## Structure
-
-```
-src/core/   dependency-free domain: types, dates, amounts, validation, reports
-src/db/     EntryRepository: the only place that touches SQLite (prepared statements, WAL)
-src/app/    Ledger: use cases (add entry, monthly report, dashboard)
-src/web/    Crow routes and template rendering
-templates/  layout, dashboard, month (page) and month_content (fragment swapped by HTMX)
-```
-
-`core`, `db` and `app` form the `finances_core` library, which does not depend on Crow.
+The server only answers `Host: 127.0.0.1:<port>` / `localhost:<port>`, and non-GET requests must carry `HX-Request: true` (htmx adds it), which blocks cross-site forms and DNS rebinding. CMake generates `build/release/compile_commands.json` (or `build/debug/` with the `debug` preset).
 
 ## Usage
 

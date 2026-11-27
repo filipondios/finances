@@ -38,7 +38,7 @@ std::int64_t to_id(std::string_view s) {
 
 } // namespace
 
-void register_routes(crow::SimpleApp &app, Ledger &ledger, const Views &views) {
+void register_routes(App &app, Ledger &ledger, const Views &views) {
   CROW_ROUTE(app, "/")([&] {
     const YearMonth current = month_of(today());
     return views.dashboard_page(ledger.dashboard(current),
@@ -128,10 +128,14 @@ void register_routes(crow::SimpleApp &app, Ledger &ledger, const Views &views) {
             return value ? value : "";
           };
           const auto selected = field("person_id");
-          const std::int64_t person_id = selected == "new"
-                                             ? ledger.add_person(field("new_person"))
-                                             : to_id(selected);
-          ledger.add_share(id, person_id, parse_amount(field("amount")));
+          const Cents cents = parse_amount(field("amount"));
+          if (selected == "new") {
+            ledger.add_share_with_new_person(id, field("new_person"), cents);
+          } else {
+            if (selected.empty())
+              throw ValidationError{"Select a person."};
+            ledger.add_share(id, to_id(selected), cents);
+          }
           crow::response res{200, ""};
           res.set_header("HX-Refresh", "true");
           return res;
