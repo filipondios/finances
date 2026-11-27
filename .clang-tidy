@@ -1,0 +1,13 @@
+# Usage: cmake --preset debug -DCMAKE_CXX_CLANG_TIDY=clang-tidy   (or run-clang-tidy)
+Checks: >
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  readability-container-contains,
+  readability-redundant-*,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape
+WarningsAsErrors: ''
+HeaderFilterRegex: 'src/.*'
