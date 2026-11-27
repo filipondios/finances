@@ -53,11 +53,17 @@ std::vector<YearMonth> Ledger::selectable_months(YearMonth current) const {
 
 std::vector<Person> Ledger::people() const { return repo_->people(); }
 
-std::int64_t Ledger::add_person(std::string_view raw_name) {
-  const auto name = trim(raw_name);
+namespace {
+std::string_view valid_person_name(std::string_view raw) {
+  const auto name = trim(raw);
   if (name.empty() || name.size() > 50)
     throw ValidationError{"The name is required (maximum 50 characters)."};
-  return repo_->add_person(name);
+  return name;
+}
+} // namespace
+
+std::int64_t Ledger::add_person(std::string_view raw_name) {
+  return repo_->add_person(valid_person_name(raw_name));
 }
 
 void Ledger::remove_person(std::int64_t id) { repo_->remove_person(id); }
@@ -71,13 +77,12 @@ std::vector<Share> Ledger::shares(std::int64_t entry_id) const {
 }
 
 void Ledger::add_share(std::int64_t entry_id, std::int64_t person_id, Cents cents) {
-  const auto known = std::ranges::any_of(repo_->people(), [person_id](const Person &p) {
-    return p.id == person_id;
-  });
-  if (!known)
-    throw ValidationError{"Select a person."};
-  if (!repo_->add_share(entry_id, person_id, cents))
-    throw ValidationError{"The shared amount exceeds the entry total."};
+  repo_->add_share(entry_id, person_id, cents);
+}
+
+void Ledger::add_share_with_new_person(std::int64_t entry_id,
+                                       std::string_view raw_name, Cents cents) {
+  repo_->add_share_with_new_person(entry_id, valid_person_name(raw_name), cents);
 }
 
 void Ledger::remove_share(std::int64_t entry_id, std::int64_t person_id) {

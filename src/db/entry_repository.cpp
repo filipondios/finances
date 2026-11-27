@@ -1,12 +1,18 @@
 #include "db/entry_repository.hpp"
 #include "core/calendar.hpp"
+#include "core/errors.hpp"
+#include <SQLiteCpp/SQLiteCpp.h>
+#include <sqlite3.h>
+#include <array>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 
 namespace fin {
 namespace {
 
-constexpr auto kSchema = R"sql(
+/// Migration 1: the original schema. Frozen: never edit it, append a migration.
+constexpr auto kMigration1 = R"sql(
     CREATE TABLE IF NOT EXISTS entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -29,13 +35,58 @@ constexpr auto kSchema = R"sql(
     );
 )sql";
 
+/// Migration 2: `entries.date` must look like YYYY-MM-DD. SQLite cannot add a
+/// CHECK to an existing table, so the table is rebuilt (the procedure from the
+/// SQLite docs; it runs with foreign keys off so the shares are not cascaded).
+/// It fails, rolling back, if a legacy row has a malformed date.
+constexpr auto kMigration2 = R"sql(
+    CREATE TABLE entries_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        kind TEXT NOT NULL CHECK (kind IN ('expense', 'income')),
+        category TEXT NOT NULL CHECK (category IN ('alimentacion', 'transporte', 'vivienda', 'ocio', 'otros')),
+        date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT INTO entries_new (id, title, amount_cents, kind, category, date, created_at)
+        SELECT id, title, amount_cents, kind, category, date, created_at FROM entries;
+    UPDATE sqlite_sequence SET seq = MAX(seq, COALESCE(
+        (SELECT seq FROM sqlite_sequence WHERE name = 'entries'), 0))
+        WHERE name = 'entries_new';
+    DROP TABLE entries;
+    ALTER TABLE entries_new RENAME TO entries;
+    CREATE INDEX entries_by_date ON entries(date);
+)sql";
+
+constexpr std::array<std::string_view, 2> kMigrations{kMigration1, kMigration2};
+
+/// Applies the pending migrations, each in its own transaction, tracking the
+/// schema version in `PRAGMA user_version`.
+void migrate(SQLite::Database &db) {
+  const auto applied =
+      static_cast<std::size_t>(db.execAndGet("PRAGMA user_version").getInt());
+  if (applied > kMigrations.size())
+    throw std::runtime_error(
+        "finances.db was created by a newer version of this program.");
+  for (auto i = applied; i < kMigrations.size(); ++i) {
+    SQLite::Transaction tx{db};
+    db.exec(std::string{kMigrations[i]});
+    db.exec("PRAGMA user_version = " + std::to_string(i + 1));
+    tx.commit();
+  }
+}
+
 SQLite::Database open_database(const std::filesystem::path &file) {
   SQLite::Database db{file, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE};
   db.setBusyTimeout(5'000);
-  // WAL + NORMAL: writes do not need several fsyncs per insert.
-  db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
+  // WAL + FULL: no committed transaction is lost on power failure. The write
+  // volume of a personal ledger makes the extra fsync irrelevant.
+  db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;");
+  // Off while migrating (table rebuilds must not cascade), then on for good.
+  db.exec("PRAGMA foreign_keys = OFF;");
+  migrate(db);
   db.exec("PRAGMA foreign_keys = ON;");
-  db.exec(kSchema);
   return db;
 }
 
@@ -53,6 +104,25 @@ private:
 /// Text of a column without copying it (valid until the next step/reset).
 std::string_view text_of(const SQLite::Column &c) noexcept {
   return c.getText();
+}
+
+/// Stored values are guaranteed by CHECK constraints; anything else is
+/// corruption and must not be silently reinterpreted.
+Kind stored_kind(std::string_view s) {
+  if (const auto k = kind_from_key(s))
+    return *k;
+  throw std::runtime_error("Invalid kind in the database: " + std::string{s});
+}
+
+Category stored_category(std::string_view s) {
+  if (const auto c = category_from_key(s))
+    return *c;
+  throw std::runtime_error("Invalid category in the database: " +
+                           std::string{s});
+}
+
+bool is_constraint_violation(const SQLite::Exception &e) noexcept {
+  return e.getErrorCode() == SQLITE_CONSTRAINT;
 }
 
 Date parse_stored_date(std::string_view s) {
@@ -95,6 +165,7 @@ EntryRepository::EntryRepository(const std::filesystem::path &file)
       share_remaining_{db_, "SELECT e.amount_cents - COALESCE("
                              "(SELECT SUM(amount_cents) FROM entry_shares "
                              "WHERE entry_id = e.id), 0) FROM entries e WHERE e.id = ?"},
+      person_exists_{db_, "SELECT 1 FROM people WHERE id = ?"},
       add_share_{db_, "INSERT INTO entry_shares (entry_id, person_id, amount_cents) "
                       "VALUES (?1, ?2, ?3)"},
       remove_share_{db_, "DELETE FROM entry_shares "
@@ -138,9 +209,8 @@ std::vector<Entry> EntryRepository::entries_in(YearMonth month) const {
     e.id = list_.getColumn(0).getInt64();
     e.title = list_.getColumn(1).getString();
     e.amount = list_.getColumn(2).getInt64();
-    e.kind = kind_from_key(text_of(list_.getColumn(3))).value_or(Kind::expense);
-    e.category = category_from_key(text_of(list_.getColumn(4)))
-                     .value_or(Category::other);
+    e.kind = stored_kind(text_of(list_.getColumn(3)));
+    e.category = stored_category(text_of(list_.getColumn(4)));
     e.date = parse_stored_date(text_of(list_.getColumn(5)));
     out.push_back(std::move(e));
   }
@@ -179,8 +249,7 @@ CategoryTotals EntryRepository::expenses_by_category(YearMonth first,
 
   CategoryTotals out{};
   while (by_category_.executeStep()) {
-    const auto category = category_from_key(text_of(by_category_.getColumn(0)))
-                              .value_or(Category::other);
+    const auto category = stored_category(text_of(by_category_.getColumn(0)));
     out[static_cast<std::size_t>(category)] +=
         by_category_.getColumn(1).getInt64();
   }
@@ -208,12 +277,22 @@ std::vector<Person> EntryRepository::people() const {
   return out;
 }
 
-std::int64_t EntryRepository::add_person(std::string_view name) {
-  const std::scoped_lock lock{mutex_};
+std::int64_t EntryRepository::insert_person(std::string_view name) {
   const ResetOnExit reset{add_person_};
   add_person_.bind(1, std::string{name});
-  add_person_.exec();
+  try {
+    add_person_.exec();
+  } catch (const SQLite::Exception &e) {
+    if (is_constraint_violation(e))
+      throw ValidationError{"That person already exists."};
+    throw;
+  }
   return db_.getLastInsertRowid();
+}
+
+std::int64_t EntryRepository::add_person(std::string_view name) {
+  const std::scoped_lock lock{mutex_};
+  return insert_person(name);
 }
 
 void EntryRepository::remove_person(std::int64_t id) {
@@ -247,23 +326,52 @@ std::vector<Share> EntryRepository::shares(std::int64_t entry_id) const {
   return out;
 }
 
-bool EntryRepository::add_share(std::int64_t entry_id, std::int64_t person_id,
-                                Cents cents) {
-  const std::scoped_lock lock{mutex_};
+void EntryRepository::insert_share(std::int64_t entry_id,
+                                   std::int64_t person_id, Cents cents) {
+  if (cents <= 0)
+    throw ValidationError{"The amount is not valid."};
+  {
+    const ResetOnExit reset{person_exists_};
+    person_exists_.bind(1, person_id);
+    if (!person_exists_.executeStep())
+      throw ValidationError{"Select a person."};
+  }
   {
     const ResetOnExit reset{share_remaining_};
     share_remaining_.bind(1, entry_id);
     if (!share_remaining_.executeStep())
-      return false;
-    if (cents <= 0 || cents > share_remaining_.getColumn(0).getInt64())
-      return false;
+      throw ValidationError{"Entry not found."};
+    if (cents > share_remaining_.getColumn(0).getInt64())
+      throw ValidationError{"The shared amount exceeds the entry total."};
   }
   const ResetOnExit reset{add_share_};
   add_share_.bind(1, entry_id);
   add_share_.bind(2, person_id);
   add_share_.bind(3, cents);
-  add_share_.exec();
-  return true;
+  try {
+    add_share_.exec();
+  } catch (const SQLite::Exception &e) {
+    // Entry and person exist, so the only constraint left is the primary key.
+    if (is_constraint_violation(e))
+      throw ValidationError{
+          "That person already has a share in this entry. Remove it first."};
+    throw;
+  }
+}
+
+void EntryRepository::add_share(std::int64_t entry_id, std::int64_t person_id,
+                                Cents cents) {
+  const std::scoped_lock lock{mutex_};
+  insert_share(entry_id, person_id, cents);
+}
+
+void EntryRepository::add_share_with_new_person(std::int64_t entry_id,
+                                                std::string_view name,
+                                                Cents cents) {
+  const std::scoped_lock lock{mutex_};
+  SQLite::Transaction tx{db_}; // rolls back on any exception below
+  insert_share(entry_id, insert_person(name), cents);
+  tx.commit();
 }
 
 void EntryRepository::remove_share(std::int64_t entry_id, std::int64_t person_id) {

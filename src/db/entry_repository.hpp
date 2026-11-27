@@ -42,6 +42,7 @@ public:
   [[nodiscard]] std::vector<YearMonth> months_with_entries() const;
 
   [[nodiscard]] std::vector<Person> people() const;
+  /// Throws `ValidationError` if the name is already taken.
   [[nodiscard]] std::int64_t add_person(std::string_view name);
 
   /// Deletes a person and, by cascade, their shares.
@@ -51,14 +52,24 @@ public:
   [[nodiscard]] std::map<std::int64_t, int> share_counts(YearMonth month) const;
   [[nodiscard]] std::vector<Share> shares(std::int64_t entry_id) const;
 
-  /// Returns false when the entry/person is missing or the total is exceeded.
-  bool add_share(std::int64_t entry_id, std::int64_t person_id, Cents cents);
+  /// Throws `ValidationError` if the person/entry is missing, the person
+  /// already has a share in the entry, or the entry total would be exceeded.
+  void add_share(std::int64_t entry_id, std::int64_t person_id, Cents cents);
+
+  /// Creates the person and their share atomically: if the share is
+  /// rejected, the person is not created either.
+  void add_share_with_new_person(std::int64_t entry_id, std::string_view name,
+                                 Cents cents);
   void remove_share(std::int64_t entry_id, std::int64_t person_id);
 
   /// Amount owed by each person, overall and in `month`.
   [[nodiscard]] std::vector<PersonDebt> debts(YearMonth month) const;
 
 private:
+  // Require `mutex_` to be held.
+  std::int64_t insert_person(std::string_view name);
+  void insert_share(std::int64_t entry_id, std::int64_t person_id, Cents cents);
+
   mutable std::mutex mutex_;
   mutable SQLite::Database db_;
   mutable SQLite::Statement insert_;
@@ -73,6 +84,7 @@ private:
   mutable SQLite::Statement share_counts_;
   mutable SQLite::Statement shares_;
   mutable SQLite::Statement share_remaining_;
+  mutable SQLite::Statement person_exists_;
   mutable SQLite::Statement add_share_;
   mutable SQLite::Statement remove_share_;
   mutable SQLite::Statement debts_;

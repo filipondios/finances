@@ -38,7 +38,11 @@ public:
 
   [[nodiscard]] std::map<std::int64_t, int> share_counts(YearMonth month) const;
   [[nodiscard]] std::vector<Share> shares(std::int64_t entry_id) const;
+  /// Throws `ValidationError` (unknown person/entry, duplicate, over the total).
   void add_share(std::int64_t entry_id, std::int64_t person_id, Cents cents);
+  /// Like `add_share` for a person that does not exist yet; all or nothing.
+  void add_share_with_new_person(std::int64_t entry_id, std::string_view name,
+                                 Cents cents);
   void remove_share(std::int64_t entry_id, std::int64_t person_id);
   [[nodiscard]] std::vector<PersonDebt> debts(YearMonth month) const;
 
