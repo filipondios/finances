@@ -1,8 +1,8 @@
 #include "core/errors.hpp"
 #include "core/money.hpp"
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include <cstdint>
 #include <limits>
 #include <string_view>
@@ -65,6 +65,7 @@ TEST_CASE("format_money does not overflow at the extremes", "[money]") {
 TEST_CASE("format_money output can be parsed back", "[money]") {
   for (const Cents c : {1, 99, 100, 12345, 123456, 99999999}) {
     const auto text = format_money(c);
-    CHECK(parse_amount(text.substr(0, text.size() - std::string_view{" €"}.size())) == c);
+    CHECK(parse_amount(text.substr(0, text.size() -
+                                          std::string_view{" €"}.size())) == c);
   }
 }

@@ -19,10 +19,10 @@ TEST_CASE("parse_year_month", "[calendar]") {
 TEST_CASE("parse_date accepts real dates only", "[calendar]") {
   CHECK(parse_date("2026-11-26") == ymd(2026, 11, 26));
   CHECK(parse_date("2024-02-29") == ymd(2024, 2, 29)); // leap year
-  const auto bad = GENERATE(as<std::string_view>{}, "", "2026-02-29",
-                            "2026-04-31", "2026-11-00", "2026-13-01",
-                            "2026-1-01", "2026-11-1", "2026/11/26",
-                            "2026-11-26 ", "20261126");
+  const auto bad =
+      GENERATE(as<std::string_view>{}, "", "2026-02-29", "2026-04-31",
+               "2026-11-00", "2026-13-01", "2026-1-01", "2026-11-1",
+               "2026/11/26", "2026-11-26 ", "20261126");
   CHECK_FALSE(parse_date(bad).has_value());
 }
 

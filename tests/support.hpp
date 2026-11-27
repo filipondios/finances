@@ -32,7 +32,8 @@ class TempDb {
 public:
   TempDb() {
     static std::atomic<unsigned> counter{0};
-    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const auto stamp =
+        std::chrono::steady_clock::now().time_since_epoch().count();
     path_ = std::filesystem::temp_directory_path() /
             ("finances-test-" + std::to_string(stamp) + "-" +
              std::to_string(counter++) + ".db");

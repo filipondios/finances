@@ -62,11 +62,13 @@ TEST_CASE("remove returns the month, then nothing", "[repo]") {
   CHECK(repo.entries_in(ym(2026, 11)).empty());
 }
 
-TEST_CASE("totals, categories and months are aggregated by the database", "[repo]") {
+TEST_CASE("totals, categories and months are aggregated by the database",
+          "[repo]") {
   EntryRepository repo{":memory:"};
   repo.add(make_entry("s", 1000, kIncome, Category::other, ymd(2026, 11, 1)));
   repo.add(make_entry("f", 300, kExpense, Category::food, ymd(2026, 11, 2)));
-  repo.add(make_entry("t", 200, kExpense, Category::transport, ymd(2026, 11, 3)));
+  repo.add(
+      make_entry("t", 200, kExpense, Category::transport, ymd(2026, 11, 3)));
   repo.add(make_entry("o", 50, kExpense, Category::food, ymd(2026, 9, 3)));
 
   const auto totals = repo.totals_between(ym(2026, 9), ym(2026, 11));
@@ -76,7 +78,8 @@ TEST_CASE("totals, categories and months are aggregated by the database", "[repo
   CHECK(totals.at(ym(2026, 11)).count == 3);
   CHECK(totals.at(ym(2026, 9)).expenses == 50);
 
-  const auto by_category = repo.expenses_by_category(ym(2026, 11), ym(2026, 11));
+  const auto by_category =
+      repo.expenses_by_category(ym(2026, 11), ym(2026, 11));
   CHECK(by_category[static_cast<std::size_t>(Category::food)] == 300);
   CHECK(by_category[static_cast<std::size_t>(Category::transport)] == 200);
   CHECK(by_category[static_cast<std::size_t>(Category::other)] == 0); // income
@@ -89,18 +92,22 @@ TEST_CASE("totals, categories and months are aggregated by the database", "[repo
 
 TEST_CASE("Ledger::add_entry validates and returns the month", "[ledger]") {
   Fixture f;
-  const auto month =
-      f.ledger.add_entry({.title = "Compra", .amount = "1.234,56",
-                          .kind = "expense", .category = "ocio",
-                          .date = "2026-11-20", .month = "2026-11"});
+  const auto month = f.ledger.add_entry({.title = "Compra",
+                                         .amount = "1.234,56",
+                                         .kind = "expense",
+                                         .category = "ocio",
+                                         .date = "2026-11-20",
+                                         .month = "2026-11"});
   CHECK(month == ym(2026, 11));
   const auto entries = f.repo.entries_in(ym(2026, 11));
   REQUIRE(entries.size() == 1);
   CHECK(entries[0].amount == 123456);
   CHECK(entries[0].category == Category::leisure);
 
-  CHECK_THROWS_AS(f.ledger.add_entry({.title = "", .amount = "1",
-                                      .kind = "expense", .category = "ocio",
+  CHECK_THROWS_AS(f.ledger.add_entry({.title = "",
+                                      .amount = "1",
+                                      .kind = "expense",
+                                      .category = "ocio",
                                       .date = "2026-11-20",
                                       .month = "2026-11"}),
                   ValidationError);
@@ -146,15 +153,18 @@ TEST_CASE("share errors are specific", "[ledger][shares]") {
   const auto ana = f.ledger.add_person("Ana");
   f.ledger.add_share(entry, ana, 100);
 
-  CHECK_THROWS_WITH(f.ledger.add_share(entry, ana, 100),
-                    "That person already has a share in this entry. Remove it first.");
+  CHECK_THROWS_WITH(
+      f.ledger.add_share(entry, ana, 100),
+      "That person already has a share in this entry. Remove it first.");
   CHECK_THROWS_WITH(f.ledger.add_share(999, ana, 100), "Entry not found.");
   CHECK_THROWS_WITH(f.ledger.add_share(entry, 777, 100), "Select a person.");
-  CHECK_THROWS_WITH(f.ledger.add_share(entry, ana, 0), "The amount is not valid.");
+  CHECK_THROWS_WITH(f.ledger.add_share(entry, ana, 0),
+                    "The amount is not valid.");
   CHECK(f.ledger.shares(entry).size() == 1);
 }
 
-TEST_CASE("a failed share does not leave a new person behind", "[ledger][shares]") {
+TEST_CASE("a failed share does not leave a new person behind",
+          "[ledger][shares]") {
   Fixture f;
   f.repo.add(make_entry("dinner", 1000, kExpense, Category::food, kNov1));
   const auto entry = f.repo.entries_in(ym(2026, 11)).front().id;
@@ -177,7 +187,8 @@ TEST_CASE("a failed share does not leave a new person behind", "[ledger][shares]
   CHECK(f.ledger.shares(entry).size() == 1);
 }
 
-TEST_CASE("deleting a person or an entry removes its shares", "[ledger][shares]") {
+TEST_CASE("deleting a person or an entry removes its shares",
+          "[ledger][shares]") {
   Fixture f;
   f.repo.add(make_entry("a", 1000, kExpense, Category::food, kNov1));
   f.repo.add(make_entry("b", 1000, kExpense, Category::food, kNov1));
@@ -196,8 +207,10 @@ TEST_CASE("deleting a person or an entry removes its shares", "[ledger][shares]"
 
 TEST_CASE("debts are summed overall and per month", "[ledger][shares]") {
   Fixture f;
-  f.repo.add(make_entry("nov", 1000, kExpense, Category::food, ymd(2026, 11, 2)));
-  f.repo.add(make_entry("oct", 500, kExpense, Category::food, ymd(2026, 10, 2)));
+  f.repo.add(
+      make_entry("nov", 1000, kExpense, Category::food, ymd(2026, 11, 2)));
+  f.repo.add(
+      make_entry("oct", 500, kExpense, Category::food, ymd(2026, 10, 2)));
   const auto nov = f.repo.entries_in(ym(2026, 11)).front().id;
   const auto oct = f.repo.entries_in(ym(2026, 10)).front().id;
   const auto ana = f.ledger.add_person("Ana");
@@ -230,12 +243,14 @@ TEST_CASE("the clock is injectable", "[ledger]") {
   CHECK(Ledger{repo}.today().ok()); // default: the real date
 }
 
-TEST_CASE("dashboard covers the last six months ending at 'current'", "[ledger]") {
+TEST_CASE("dashboard covers the last six months ending at 'current'",
+          "[ledger]") {
   EntryRepository repo{":memory:"};
   Ledger ledger{repo, [] { return ymd(2030, 2, 28); }};
   repo.add(make_entry("pay", 1000, kIncome, Category::other, ymd(2030, 2, 1)));
   repo.add(make_entry("food", 300, kExpense, Category::food, ymd(2030, 2, 5)));
-  repo.add(make_entry("bus", 500, kExpense, Category::transport, ymd(2029, 9, 5)));
+  repo.add(
+      make_entry("bus", 500, kExpense, Category::transport, ymd(2029, 9, 5)));
   repo.add(make_entry("old", 999, kExpense, Category::other, ymd(2029, 8, 5)));
 
   const auto d = ledger.dashboard(month_of(ledger.today()));
@@ -255,7 +270,8 @@ TEST_CASE("dashboard covers the last six months ending at 'current'", "[ledger]"
   CHECK(d.history_by_category[1].percent == 38);
 }
 
-TEST_CASE("selectable months: data months plus the current one, no duplicates", "[ledger]") {
+TEST_CASE("selectable months: data months plus the current one, no duplicates",
+          "[ledger]") {
   Fixture f;
   f.repo.add(make_entry("a", 1, kExpense, Category::food, ymd(2026, 9, 1)));
   f.repo.add(make_entry("b", 1, kExpense, Category::food, ymd(2026, 9, 2)));

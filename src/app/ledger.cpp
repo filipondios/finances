@@ -80,7 +80,8 @@ std::vector<Share> Ledger::shares(std::int64_t entry_id) const {
   return repo_.shares(entry_id);
 }
 
-void Ledger::add_share(std::int64_t entry_id, std::int64_t person_id, Cents cents) {
+void Ledger::add_share(std::int64_t entry_id, std::int64_t person_id,
+                       Cents cents) {
   repo_.add_share(entry_id, person_id, cents);
 }
 

@@ -3,12 +3,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
-#include <stdexcept>
 
 using namespace fin;
+using Catch::Matchers::ContainsSubstring;
 using fin::test::TempDb;
 using fin::test::ym;
-using Catch::Matchers::ContainsSubstring;
 
 namespace {
 
@@ -53,7 +52,9 @@ bool fails(SQLite::Database &db, const char *sql) {
 
 TEST_CASE("a new database gets the current schema", "[migrations]") {
   const TempDb file;
-  { const EntryRepository repo{file.path()}; }
+  {
+    const EntryRepository repo{file.path()};
+  }
   auto db = file.raw();
   CHECK(user_version(db) == 3);
   CHECK(fails(db, "INSERT INTO entries (title,amount_cents,kind,category,date) "
@@ -62,7 +63,10 @@ TEST_CASE("a new database gets the current schema", "[migrations]") {
 
 TEST_CASE("a legacy database is migrated keeping its data", "[migrations]") {
   const TempDb file;
-  { auto db = file.raw(); db.exec(kLegacySchema); }
+  {
+    auto db = file.raw();
+    db.exec(kLegacySchema);
+  }
 
   {
     EntryRepository repo{file.path()};
@@ -75,40 +79,54 @@ TEST_CASE("a legacy database is migrated keeping its data", "[migrations]") {
 
   auto db = file.raw();
   CHECK(user_version(db) == 3);
-  CHECK(db.execAndGet("SELECT MAX(id) FROM entries").getInt() == 4); // id 3 not reused
+  CHECK(db.execAndGet("SELECT MAX(id) FROM entries").getInt() ==
+        4); // id 3 not reused
   CHECK(fails(db, "INSERT INTO entries (title,amount_cents,kind,category,date) "
                   "VALUES ('x',1,'expense','otros','2026-1-5')"));
   // The category list lives in code only: new categories need no migration.
-  CHECK_FALSE(fails(db, "INSERT INTO entries (title,amount_cents,kind,category,date) "
-                        "VALUES ('x',1,'expense','future','2026-11-05')"));
+  CHECK_FALSE(
+      fails(db, "INSERT INTO entries (title,amount_cents,kind,category,date) "
+                "VALUES ('x',1,'expense','future','2026-11-05')"));
 
-  { const EntryRepository again{file.path()}; } // opening again is a no-op
+  {
+    const EntryRepository again{file.path()};
+  } // opening again is a no-op
   CHECK(user_version(db) == 3);
 }
 
-TEST_CASE("a legacy database with a malformed date is left untouched", "[migrations]") {
+TEST_CASE("a legacy database with a malformed date is left untouched",
+          "[migrations]") {
   const TempDb file;
   {
     auto db = file.raw();
     db.exec(kLegacySchema);
     db.exec("UPDATE entries SET date = 'garbage' WHERE id = 1");
   }
-  CHECK_THROWS_WITH(EntryRepository{file.path()}, ContainsSubstring("CHECK constraint failed"));
+  CHECK_THROWS_WITH(EntryRepository{file.path()},
+                    ContainsSubstring("CHECK constraint failed"));
 
   auto db = file.raw();
   CHECK(user_version(db) == 1); // migration 2 rolled back as a whole
   CHECK(db.execAndGet("SELECT COUNT(*) FROM entries").getInt() == 2);
-  CHECK(db.execAndGet("SELECT date FROM entries WHERE id = 1").getString() == "garbage");
+  CHECK(db.execAndGet("SELECT date FROM entries WHERE id = 1").getString() ==
+        "garbage");
 }
 
 TEST_CASE("a database from a newer version is refused", "[migrations]") {
   const TempDb file;
-  { const EntryRepository repo{file.path()}; }
-  { auto db = file.raw(); db.exec("PRAGMA user_version = 99"); }
-  CHECK_THROWS_WITH(EntryRepository{file.path()}, ContainsSubstring("newer version"));
+  {
+    const EntryRepository repo{file.path()};
+  }
+  {
+    auto db = file.raw();
+    db.exec("PRAGMA user_version = 99");
+  }
+  CHECK_THROWS_WITH(EntryRepository{file.path()},
+                    ContainsSubstring("newer version"));
 }
 
-TEST_CASE("corrupt stored values are reported, not reinterpreted", "[migrations]") {
+TEST_CASE("corrupt stored values are reported, not reinterpreted",
+          "[migrations]") {
   const TempDb file;
   EntryRepository repo{file.path()};
   file.raw().exec("INSERT INTO entries (title,amount_cents,kind,category,date) "

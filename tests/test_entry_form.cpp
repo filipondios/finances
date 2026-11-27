@@ -10,8 +10,11 @@ using fin::test::ymd;
 
 namespace {
 EntryForm form_with_title(std::string_view title) {
-  return {.title = title, .amount = "12,50", .kind = "expense",
-          .category = "alimentacion", .date = "2026-11-15",
+  return {.title = title,
+          .amount = "12,50",
+          .kind = "expense",
+          .category = "alimentacion",
+          .date = "2026-11-15",
           .month = "2026-11"};
 }
 std::string repeat(std::string_view unit, int times) {
@@ -57,11 +60,13 @@ TEST_CASE("validate reports each bad field", "[form]") {
 
   f = form_with_title("x");
   f.date = "2026-02-30";
-  CHECK_THROWS_WITH(validate(f), "The date must belong to the displayed month.");
+  CHECK_THROWS_WITH(validate(f),
+                    "The date must belong to the displayed month.");
 
   f = form_with_title("x");
   f.date = "2026-10-31"; // real date, other month
-  CHECK_THROWS_WITH(validate(f), "The date must belong to the displayed month.");
+  CHECK_THROWS_WITH(validate(f),
+                    "The date must belong to the displayed month.");
 
   f = form_with_title("x");
   f.amount = "abc";

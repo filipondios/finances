@@ -23,11 +23,11 @@ Cents to_cents(std::string_view digits) {
 /// "1.234" with sep '.' -> "1234"; nullopt unless the groups are well formed.
 std::optional<std::string> ungroup(std::string_view text, char sep) {
   std::string digits;
-  for (bool first = true; ; first = false) {
+  for (bool first = true;; first = false) {
     const auto cut = text.find(sep);
     const auto group = text.substr(0, cut);
-    const bool size_ok = first ? (group.size() >= 1 && group.size() <= 3)
-                               : group.size() == 3;
+    const bool size_ok =
+        first ? (group.size() >= 1 && group.size() <= 3) : group.size() == 3;
     if (!size_ok || !all_digits(group))
       return std::nullopt;
     digits += group;
