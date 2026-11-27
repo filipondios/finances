@@ -4,8 +4,8 @@
     <h1>{{label}}</h1>
   </div>
   <div class="month-nav">
-    <a class="btn" href="/month/{{prev_month}}">← {{prev_label}}</a>
-    <a class="btn" href="/month/{{next_month}}">{{next_label}} →</a>
+    {{#has_prev}}<a class="btn" href="/month/{{prev_month}}">← {{prev_label}}</a>{{/has_prev}}
+    {{#has_next}}<a class="btn" href="/month/{{next_month}}">{{next_label}} →</a>{{/has_next}}
   </div>
 </section>
 

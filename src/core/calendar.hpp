@@ -22,6 +22,11 @@ parse_year_month(std::string_view s) noexcept;
   return {d.year(), d.month()};
 }
 
+/// Months the app can parse and format (years 0000-9999).
+[[nodiscard]] constexpr bool in_supported_range(YearMonth m) noexcept {
+  return m.year() >= std::chrono::year{0} && m.year() <= std::chrono::year{9999};
+}
+
 /// Lexicographic bounds of the month for comparisons against the `date`
 /// column ("YYYY-MM-DD"): every valid day of the month falls in [first_day_key,
 /// last_day_key].

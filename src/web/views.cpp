@@ -205,10 +205,16 @@ crow::response Views::month_page(const MonthReport &report,
   Context c;
   put_totals(c, report.summary);
   c["month"] = format_month_key(month);
-  c["prev_month"] = format_month_key(prev);
-  c["next_month"] = format_month_key(next);
-  c["prev_label"] = format_month_label(prev);
-  c["next_label"] = format_month_label(next);
+  c["has_prev"] = in_supported_range(prev);
+  c["has_next"] = in_supported_range(next);
+  if (in_supported_range(prev)) {
+    c["prev_month"] = format_month_key(prev);
+    c["prev_label"] = format_month_label(prev);
+  }
+  if (in_supported_range(next)) {
+    c["next_month"] = format_month_key(next);
+    c["next_label"] = format_month_label(next);
+  }
   c["today"] = format_date(today);
   c["month_content"] =
       month_content_.render_string(month_content_context(report, share_counts));
