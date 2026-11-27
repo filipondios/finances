@@ -309,4 +309,30 @@ grep -q 'Missing templates/' "$empty/out.log"
 }
 rm -rf "$empty"
 
-echo "OK: dashboard, entries, deletion, people, shares, validation, date order and statistics"
+# Editing an entry changes only title and date, through the same modal pattern.
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' "http://127.0.0.1:$port/entries/$entry_id/edit")"
+[[ "$code" == 200 ]] || { echo "Entry edit modal returned $code"; exit 1; }
+grep -q 'value="Newest date"' "$tmp/out.html"
+code="$(curl -sS -D "$tmp/headers.txt" -o "$tmp/out.html" -w '%{http_code}' -H "HX-Request: true" -X POST "http://127.0.0.1:$port/entries/$entry_id/edit" --data-urlencode 'title=Edited entry' -d "date=$month-20")"
+[[ "$code" == 200 ]] || { echo "Entry edit returned $code"; exit 1; }
+grep -qi 'HX-Refresh: true' "$tmp/headers.txt"
+title="$(sqlite3 "$tmp/finances.db" "SELECT title FROM entries WHERE id=$entry_id")"
+[[ "$title" == 'Edited entry' ]] || { echo "Entry title not edited: $title"; exit 1; }
+stored_date="$(sqlite3 "$tmp/finances.db" "SELECT date FROM entries WHERE id=$entry_id")"
+[[ "$stored_date" == "$month-20" ]] || { echo "Entry date not edited: $stored_date"; exit 1; }
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' -H "HX-Request: true" -X POST "http://127.0.0.1:$port/entries/$entry_id/edit" --data-urlencode 'title=Bad date' -d 'date=2026-02-30')"
+grep -q 'The date is not valid' "$tmp/out.html" || { echo "Invalid edit date accepted"; exit 1; }
+title="$(sqlite3 "$tmp/finances.db" "SELECT title FROM entries WHERE id=$entry_id")"
+[[ "$title" == 'Edited entry' ]] || { echo "Invalid edit changed the entry"; exit 1; }
+
+# Editing a person only changes their name.
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' "http://127.0.0.1:$port/people/$person_id/edit")"
+[[ "$code" == 200 ]] || { echo "Person edit modal returned $code"; exit 1; }
+grep -q 'value="Una persona"' "$tmp/out.html"
+code="$(curl -sS -D "$tmp/headers.txt" -o "$tmp/out.html" -w '%{http_code}' -H "HX-Request: true" -X POST "http://127.0.0.1:$port/people/$person_id/edit" --data-urlencode 'name=Renamed person')"
+[[ "$code" == 200 ]] || { echo "Person edit returned $code"; exit 1; }
+grep -qi 'HX-Refresh: true' "$tmp/headers.txt"
+name="$(sqlite3 "$tmp/finances.db" "SELECT name FROM people WHERE id=$person_id")"
+[[ "$name" == 'Renamed person' ]] || { echo "Person name not edited: $name"; exit 1; }
+
+echo "OK: dashboard, entries, deletion, people, shares, editing, validation, date order and statistics"
