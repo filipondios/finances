@@ -23,7 +23,7 @@ The server only answers `Host: 127.0.0.1:<port>` / `localhost:<port>`, and non-G
 
 - **Dashboard**: current month balance, trend over the last 6 months and expenses by category.
 - **This month / Other months**: list ordered by insertion date (newest first), with its statistics and a form to add entries. The form updates the list and statistics without reloading the page (HTMX).
-- Each entry has a title, amount, type (expense/income), category (Food, Transport, Housing, Leisure, Other) and date. The amount accepts a comma or a dot as the decimal separator, with at most two decimal places (`12,50`; `1.234` is rejected instead of being read as €1.23).
+- Each entry has a title, amount, type (expense/income), category (Food, Transport, Housing, Leisure, Other) and date. The amount accepts a comma or a dot as the decimal separator, with at most two decimal places, and thousands separators (`12,50`, `1.234,56`, `1,234.56`, `1.234.567`). A lone `1.234` is rejected as ambiguous instead of being read as €1.23. Titles and names are limited in characters, not bytes.
 
 ## Tests
 
