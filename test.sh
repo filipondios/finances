@@ -261,6 +261,12 @@ code="$(post -d "title=Millions&amount=1.234.567&kind=expense&category=ocio&date
 cents="$(sqlite3 "$tmp/finances.db" "SELECT amount_cents FROM entries WHERE title='Millions'")"
 [[ "$cents" == 123456700 ]] || { echo "1.234.567 saved as: $cents"; exit 1; }
 
+# The category <select> is generated from kCategories.
+body="$(curl -fsS "http://127.0.0.1:$port/month/$month")"
+for key in alimentacion transporte vivienda ocio otros; do
+  grep -q "<option value=\"$key\">" <<<"$body" || { echo "Missing category option $key"; exit 1; }
+done
+
 # Month navigation stops at the supported years instead of linking to 404s.
 body="$(curl -fsS "http://127.0.0.1:$port/month/9999-12")"
 ! grep -q '10000-01' <<<"$body" || { echo "Link past year 9999"; exit 1; }

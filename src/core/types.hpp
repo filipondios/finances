@@ -32,6 +32,9 @@ kind_from_key(std::string_view s) noexcept {
   return std::nullopt;
 }
 
+/// To add a category: append it here (keeping `other` last) and in
+/// `kCategories`. Nothing else needs to change: the form options are built
+/// from `kCategories`, and the database does not constrain the value.
 enum class Category : std::uint8_t {
   food,
   transport,
@@ -40,7 +43,8 @@ enum class Category : std::uint8_t {
   other
 };
 
-inline constexpr std::size_t kCategoryCount = 5;
+inline constexpr std::size_t kCategoryCount =
+    static_cast<std::size_t>(Category::other) + 1;
 
 struct CategoryInfo {
   std::string_view key;
@@ -68,6 +72,20 @@ category_from_key(std::string_view s) noexcept {
   return std::nullopt;
 }
 
+/// Every enumerator has a distinct, non-empty key and label, and keys map back
+/// to their category (a missing or misordered entry fails to compile).
+[[nodiscard]] constexpr bool categories_consistent() noexcept {
+  for (std::size_t i = 0; i < kCategoryCount; ++i) {
+    if (kCategories[i].key.empty() || kCategories[i].label.empty())
+      return false;
+    if (category_from_key(kCategories[i].key) != static_cast<Category>(i))
+      return false;
+  }
+  return true;
+}
+static_assert(categories_consistent(),
+              "kCategories must list every Category, in enum order");
+
 /// Amount accumulated per category, indexed by `Category`.
 using CategoryTotals = std::array<Cents, kCategoryCount>;
 
@@ -77,7 +95,7 @@ struct NewEntry {
   Cents amount{};
   Kind kind{};
   Category category{};
-  Date date;
+  Date date{};
 };
 
 /// An entry read from the DB
@@ -87,7 +105,7 @@ struct Entry {
   Cents amount{};
   Kind kind{};
   Category category{};
-  Date date;
+  Date date{};
 };
 
 struct Person {

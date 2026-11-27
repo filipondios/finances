@@ -16,11 +16,7 @@
   <label>Amount<input name="amount" inputmode="decimal" required placeholder="0,00"></label>
   <label>Type<select name="kind"><option value="expense">Expense</option><option value="income">Income</option></select></label>
   <label>Category<select name="category">
-    <option value="alimentacion">Food</option>
-    <option value="transporte">Transport</option>
-    <option value="vivienda">Housing</option>
-    <option value="ocio">Leisure</option>
-    <option value="otros">Other</option>
+    {{#categories}}<option value="{{key}}">{{label}}</option>{{/categories}}
   </select></label>
   <label>Date<input name="date" type="date" value="{{today}}" required></label>
   <button class="btn primary" type="submit">Add</button>

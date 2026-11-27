@@ -216,6 +216,14 @@ crow::response Views::month_page(const MonthReport &report,
     c["next_label"] = format_month_label(next);
   }
   c["today"] = format_date(today);
+  List categories;
+  for (const auto &category : kCategories) {
+    Context item;
+    item["key"] = str(category.key);
+    item["label"] = str(category.label);
+    categories.push_back(std::move(item));
+  }
+  c["categories"] = std::move(categories);
   c["month_content"] =
       month_content_.render_string(month_content_context(report, share_counts));
 
