@@ -28,6 +28,12 @@ public:
   /// Deletes an entry and returns its month, or nullopt if it does not exist.
   [[nodiscard]] std::optional<YearMonth> remove(std::int64_t id);
 
+  [[nodiscard]] std::optional<Entry> entry(std::int64_t id) const;
+
+  /// Updates title and date; false when the entry does not exist.
+  bool update_entry(std::int64_t id, std::string_view title,
+                    std::string_view date);
+
   /// Entries for a month, newest date first (ties: most recently inserted).
   [[nodiscard]] std::vector<Entry> entries_in(YearMonth month) const;
 
@@ -44,8 +50,11 @@ public:
   [[nodiscard]] std::vector<YearMonth> months_with_entries() const;
 
   [[nodiscard]] std::vector<Person> people() const;
+  [[nodiscard]] std::optional<Person> person(std::int64_t id) const;
   /// Throws `ValidationError` if the name is already taken.
   [[nodiscard]] std::int64_t add_person(std::string_view name);
+
+  void rename_person(std::int64_t id, std::string_view name);
 
   /// Deletes a person and, by cascade, their shares.
   void remove_person(std::int64_t id);
@@ -76,12 +85,16 @@ private:
   mutable SQLite::Database db_;
   mutable SQLite::Statement insert_;
   mutable SQLite::Statement remove_;
+  mutable SQLite::Statement entry_;
+  mutable SQLite::Statement update_entry_;
   mutable SQLite::Statement list_;
   mutable SQLite::Statement totals_;
   mutable SQLite::Statement by_category_;
   mutable SQLite::Statement months_;
   mutable SQLite::Statement people_;
+  mutable SQLite::Statement person_;
   mutable SQLite::Statement add_person_;
+  mutable SQLite::Statement rename_person_;
   mutable SQLite::Statement remove_person_;
   mutable SQLite::Statement share_counts_;
   mutable SQLite::Statement shares_;

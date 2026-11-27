@@ -6,6 +6,25 @@
 #include <functional>
 
 namespace fin {
+namespace {
+std::string_view valid_text(std::string_view raw, std::size_t max,
+                            std::string_view what) {
+  const auto text = trim(raw);
+  const auto length = text_length(text);
+  if (!length)
+    throw ValidationError{"The " + std::string{what} +
+                          " contains invalid characters."};
+  if (*length == 0 || *length > max)
+    throw ValidationError{"The " + std::string{what} +
+                          " is required (maximum " + std::to_string(max) +
+                          " characters)."};
+  return text;
+}
+
+std::string_view valid_person_name(std::string_view raw) {
+  return valid_text(raw, 50, "name");
+}
+} // namespace
 
 YearMonth Ledger::add_entry(const EntryForm &form) {
   const NewEntry entry = validate(form);
@@ -15,6 +34,20 @@ YearMonth Ledger::add_entry(const EntryForm &form) {
 
 std::optional<YearMonth> Ledger::remove_entry(std::int64_t id) {
   return repo_.remove(id);
+}
+
+std::optional<Entry> Ledger::entry(std::int64_t id) const {
+  return repo_.entry(id);
+}
+
+void Ledger::update_entry(std::int64_t id, std::string_view raw_title,
+                          std::string_view raw_date) {
+  const auto title = valid_text(raw_title, kMaxTitleChars, "title");
+  const auto date = parse_date(trim(raw_date));
+  if (!date)
+    throw ValidationError{"The date is not valid."};
+  if (!repo_.update_entry(id, title, format_date(*date)))
+    throw ValidationError{"Entry not found."};
 }
 
 MonthReport Ledger::month_report(YearMonth month) const {
@@ -54,20 +87,22 @@ std::vector<YearMonth> Ledger::selectable_months(YearMonth current) const {
 
 std::vector<Person> Ledger::people() const { return repo_.people(); }
 
-namespace {
-std::string_view valid_person_name(std::string_view raw) {
-  const auto name = trim(raw);
-  const auto length = text_length(name);
-  if (!length)
-    throw ValidationError{"The name contains invalid characters."};
-  if (*length == 0 || *length > 50)
-    throw ValidationError{"The name is required (maximum 50 characters)."};
-  return name;
+std::optional<Person> Ledger::person(std::int64_t id) const {
+  return repo_.person(id);
 }
-} // namespace
 
 std::int64_t Ledger::add_person(std::string_view raw_name) {
   return repo_.add_person(valid_person_name(raw_name));
+}
+
+void Ledger::rename_person(std::int64_t id, std::string_view raw_name) {
+  const auto name = valid_person_name(raw_name);
+  const auto current = repo_.person(id);
+  if (!current)
+    throw ValidationError{"Person not found."};
+  if (current->name == name)
+    return;
+  repo_.rename_person(id, name);
 }
 
 void Ledger::remove_person(std::int64_t id) { repo_.remove_person(id); }

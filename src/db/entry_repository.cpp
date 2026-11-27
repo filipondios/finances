@@ -163,6 +163,9 @@ EntryRepository::EntryRepository(const std::filesystem::path &file)
       insert_{db_, "INSERT INTO entries (title, amount_cents, kind, category, "
                    "date) VALUES (?1, ?2, ?3, ?4, ?5)"},
       remove_{db_, "DELETE FROM entries WHERE id = ? RETURNING substr(date, 1, 7)"},
+      entry_{db_, "SELECT id, title, amount_cents, kind, category, date "
+                  "FROM entries WHERE id = ?"},
+      update_entry_{db_, "UPDATE entries SET title = ?1, date = ?2 WHERE id = ?3"},
       // `date` is "YYYY-MM-DD": comparing against the month range lets the
       // query use the entries_by_date index (with substr(date,1,7)=? it would
       // have to scan the whole table).
@@ -178,7 +181,9 @@ EntryRepository::EntryRepository(const std::filesystem::path &file)
       months_{db_, "SELECT DISTINCT substr(date, 1, 7) FROM entries "
                    "ORDER BY 1 DESC"},
       people_{db_, "SELECT id, name FROM people ORDER BY name"},
+      person_{db_, "SELECT id, name FROM people WHERE id = ?"},
       add_person_{db_, "INSERT INTO people (name) VALUES (?)"},
+      rename_person_{db_, "UPDATE people SET name = ?1 WHERE id = ?2"},
       remove_person_{db_, "DELETE FROM people WHERE id = ?"},
       share_counts_{db_, "SELECT s.entry_id, COUNT(*) FROM entry_shares s "
                           "JOIN entries e ON e.id = s.entry_id "
@@ -219,6 +224,33 @@ std::optional<YearMonth> EntryRepository::remove(std::int64_t id) {
   if (!remove_.executeStep())
     return std::nullopt;
   return parse_year_month(text_of(remove_.getColumn(0)));
+}
+
+std::optional<Entry> EntryRepository::entry(std::int64_t id) const {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{entry_};
+  entry_.bind(1, id);
+  if (!entry_.executeStep())
+    return std::nullopt;
+  Entry e;
+  e.id = entry_.getColumn(0).getInt64();
+  e.title = entry_.getColumn(1).getString();
+  e.amount = entry_.getColumn(2).getInt64();
+  e.kind = stored_kind(text_of(entry_.getColumn(3)));
+  e.category = stored_category(text_of(entry_.getColumn(4)));
+  e.date = parse_stored_date(text_of(entry_.getColumn(5)));
+  return e;
+}
+
+bool EntryRepository::update_entry(std::int64_t id, std::string_view title,
+                                   std::string_view date) {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{update_entry_};
+  update_entry_.bind(1, std::string{title});
+  update_entry_.bind(2, std::string{date});
+  update_entry_.bind(3, id);
+  update_entry_.exec();
+  return db_.getChanges() > 0;
 }
 
 std::vector<Entry> EntryRepository::entries_in(YearMonth month) const {
@@ -299,6 +331,29 @@ std::vector<Person> EntryRepository::people() const {
   while (people_.executeStep())
     out.push_back({people_.getColumn(0).getInt64(), people_.getColumn(1).getString()});
   return out;
+}
+
+std::optional<Person> EntryRepository::person(std::int64_t id) const {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{person_};
+  person_.bind(1, id);
+  if (!person_.executeStep())
+    return std::nullopt;
+  return Person{person_.getColumn(0).getInt64(), person_.getColumn(1).getString()};
+}
+
+void EntryRepository::rename_person(std::int64_t id, std::string_view name) {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{rename_person_};
+  rename_person_.bind(1, std::string{name});
+  rename_person_.bind(2, id);
+  try {
+    rename_person_.exec();
+  } catch (const SQLite::Exception &e) {
+    if (is_constraint_violation(e))
+      throw ValidationError{"That person already exists."};
+    throw;
+  }
 }
 
 std::int64_t EntryRepository::insert_person(std::string_view name) {

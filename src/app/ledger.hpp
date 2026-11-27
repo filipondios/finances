@@ -34,6 +34,10 @@ public:
   /// Deletes an entry and returns the month it belonged to.
   [[nodiscard]] std::optional<YearMonth> remove_entry(std::int64_t id);
 
+  [[nodiscard]] std::optional<Entry> entry(std::int64_t id) const;
+  void update_entry(std::int64_t id, std::string_view title,
+                    std::string_view date);
+
   /// Entries for a month with their totals and category breakdown.
   [[nodiscard]] MonthReport month_report(YearMonth month) const;
 
@@ -46,7 +50,9 @@ public:
   selectable_months(YearMonth current) const;
 
   [[nodiscard]] std::vector<Person> people() const;
+  [[nodiscard]] std::optional<Person> person(std::int64_t id) const;
   [[nodiscard]] std::int64_t add_person(std::string_view name);
+  void rename_person(std::int64_t id, std::string_view name);
   void remove_person(std::int64_t id);
 
   [[nodiscard]] std::map<std::int64_t, int> share_counts(YearMonth month) const;
