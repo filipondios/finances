@@ -14,18 +14,18 @@ struct CategoryShare {
 };
 
 struct MonthSummary {
-  YearMonth month;
+  YearMonth month{};
   MonthTotals totals;
   std::vector<CategoryShare> by_category; ///< Expenses only, largest first.
 };
 
 struct MonthReport {
   MonthSummary summary;
-  std::vector<Entry> entries; ///< Newest first.
+  std::vector<Entry> entries; ///< Newest date first (ties: latest inserted).
 };
 
 struct HistoryPoint {
-  YearMonth month;
+  YearMonth month{};
   MonthTotals totals;
 };
 

@@ -34,9 +34,10 @@ Dashboard Ledger::dashboard(YearMonth current) const {
   }
 
   const MonthTotals &now = out.history.back().totals;
-  // clang-format off
-  out.current = {.month = current, .totals = now, 
-    .by_category = rank_categories(repo_->expenses_by_category(current, current))};
+  out.current = {.month = current,
+                 .totals = now,
+                 .by_category = rank_categories(
+                     repo_->expenses_by_category(current, current))};
   out.history_by_category =
       rank_categories(repo_->expenses_by_category(first, current));
   return out;

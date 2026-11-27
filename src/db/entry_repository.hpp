@@ -13,7 +13,6 @@ namespace fin {
 /// Keeps a single connection and prepares statements once; a mutex serializes
 /// access so it can be used from Crow's threads. More than enough for a local
 /// single-user app, and it avoids preparing SQL on every request.
-
 class EntryRepository {
 public:
   /// Opens (or creates) the database and applies the schema.
@@ -26,7 +25,7 @@ public:
   /// Deletes an entry and returns its month, or nullopt if it does not exist.
   [[nodiscard]] std::optional<YearMonth> remove(std::int64_t id);
 
-  /// Entries for a month, most recently inserted first.
+  /// Entries for a month, newest date first (ties: most recently inserted).
   [[nodiscard]] std::vector<Entry> entries_in(YearMonth month) const;
 
   /// Totals per month in [first, last], in a single query. Months without
