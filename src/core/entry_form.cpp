@@ -11,7 +11,10 @@ NewEntry validate(const EntryForm &form) {
   entry.amount = parse_amount(form.amount);
 
   const auto title = trim(form.title);
-  if (title.empty() || title.size() > kMaxTitleBytes)
+  const auto length = text_length(title);
+  if (!length)
+    throw ValidationError{"The title contains invalid characters."};
+  if (*length == 0 || *length > kMaxTitleChars)
     throw ValidationError{"The title is required (maximum 100 characters)."};
   entry.title = std::string{title};
 

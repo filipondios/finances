@@ -56,7 +56,10 @@ std::vector<Person> Ledger::people() const { return repo_->people(); }
 namespace {
 std::string_view valid_person_name(std::string_view raw) {
   const auto name = trim(raw);
-  if (name.empty() || name.size() > 50)
+  const auto length = text_length(name);
+  if (!length)
+    throw ValidationError{"The name contains invalid characters."};
+  if (*length == 0 || *length > 50)
     throw ValidationError{"The name is required (maximum 50 characters)."};
   return name;
 }
