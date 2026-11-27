@@ -21,9 +21,9 @@ namespace {
 
 namespace fs = std::filesystem;
 
-constexpr std::array<std::string_view, 6> kTemplates{
-    "layout.html", "dashboard.html", "month.html",
-    "month_content.html", "people.html", "shares.html"};
+constexpr std::array<std::string_view, 8> kTemplates{
+    "layout.html", "dashboard.html", "month.html", "month_content.html",
+    "people.html", "shares.html", "edit_entry.html", "edit_person.html"};
 
 /// FINANCES_PORT, default 8080.
 std::uint16_t port_from_env() {

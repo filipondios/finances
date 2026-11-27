@@ -1,0 +1,9 @@
+<div class="panel">
+  <div class="panel-head"><h2>Edit entry</h2><button class="btn" type="button" onclick="closeEditDialog()">Close</button></div>
+  <form class="entry-form" hx-post="/entries/{{id}}/edit" hx-target="#edit-dialog-content" hx-swap="innerHTML">
+    <label>Title<input name="title" value="{{title}}" maxlength="100" required></label>
+    <label>Date<input name="date" type="date" value="{{date}}" required></label>
+    <button class="btn primary" type="submit">Save</button>
+    <p id="edit-error" class="error"></p>
+  </form>
+</div>

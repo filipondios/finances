@@ -118,6 +118,25 @@ void register_routes(App &app, Ledger &ledger, const Views &views) {
                                     ledger.share_counts(*month));
       });
 
+  CROW_ROUTE(app, "/entries/<int>/edit")([&](int id) {
+    const auto entry = ledger.entry(id);
+    if (!entry)
+      return crow::response{404, "Entry not found"};
+    return views.edit_entry_dialog(*entry);
+  });
+
+  CROW_ROUTE(app, "/entries/<int>/edit")
+      .methods(crow::HTTPMethod::POST)([&](const crow::request &req, int id) {
+        return guarded("POST /entries/<id>/edit", "#edit-error",
+                       "Could not save the entry.", [&] {
+          const Form form{req};
+          ledger.update_entry(id, form["title"], form["date"]);
+          crow::response res{200, ""};
+          res.set_header("HX-Refresh", "true");
+          return res;
+        });
+      });
+
   CROW_ROUTE(app, "/people")
       .methods(crow::HTTPMethod::POST)([&](const crow::request &req) {
         return guarded("POST /people", "#person-error",
@@ -131,6 +150,25 @@ void register_routes(App &app, Ledger &ledger, const Views &views) {
       .methods(crow::HTTPMethod::DELETE)([&](int id) {
         ledger.remove_person(id);
         return views.people_panel(ledger.debts(month_of(ledger.today())));
+      });
+
+  CROW_ROUTE(app, "/people/<int>/edit")([&](int id) {
+    const auto person = ledger.person(id);
+    if (!person)
+      return crow::response{404, "Person not found"};
+    return views.edit_person_dialog(*person);
+  });
+
+  CROW_ROUTE(app, "/people/<int>/edit")
+      .methods(crow::HTTPMethod::POST)([&](const crow::request &req, int id) {
+        return guarded("POST /people/<id>/edit", "#edit-error",
+                       "Could not save the person.", [&] {
+          const Form form{req};
+          ledger.rename_person(id, form["name"]);
+          crow::response res{200, ""};
+          res.set_header("HX-Refresh", "true");
+          return res;
+        });
       });
 
   CROW_ROUTE(app, "/entries/<int>/shares")([&](int id) {

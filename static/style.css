@@ -37,12 +37,15 @@ nav select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8p
 .btn.primary:hover { background: #2f6dc0; }
 .btn.delete { padding: 5px 10px; font-size: 12px; color: var(--bad); }
 .btn.delete:hover { border-color: var(--bad); }
-.btn.share { padding: 5px 10px; font-size: 12px; }
+.btn.share, .btn.edit { padding: 5px 10px; font-size: 12px; }
+#edit-dialog .entry-form label { flex: 1 1 100%; }
 .modal { width: min(520px, 92vw); border: 1px solid var(--line); border-radius: 12px; padding: 0; }
 .modal::backdrop { background: rgba(20, 28, 40, .45); }
 .modal .panel { border: 0; }
 #share-dialog .entry-form label:first-child { flex: 1 1 100%; }
 #share-dialog .entry-form.with-new label:first-child { flex: 1 1 130px; }
+#share-dialog .entry-form label:last-of-type { flex: 1 1 100%; }
+#share-dialog .entry-form label[hidden] { display: none; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }

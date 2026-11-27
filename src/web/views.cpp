@@ -156,7 +156,9 @@ Views::Views()
       month_{crow::mustache::load("month.html")},
       month_content_{crow::mustache::load("month_content.html")},
       people_{crow::mustache::load("people.html")},
-      shares_{crow::mustache::load("shares.html")} {}
+      shares_{crow::mustache::load("shares.html")},
+      edit_entry_{crow::mustache::load("edit_entry.html")},
+      edit_person_{crow::mustache::load("edit_person.html")} {}
 
 crow::response Views::layout(std::string title, bool dashboard_active,
                              std::string content,
@@ -253,6 +255,21 @@ crow::response Views::shares_dialog(std::int64_t entry_id,
                                     std::span<const Share> shares,
                                     std::span<const Person> people) const {
   return html(shares_.render_string(shares_context(entry_id, shares, people)));
+}
+
+crow::response Views::edit_entry_dialog(const Entry &entry) const {
+  Context c;
+  c["id"] = entry.id;
+  c["title"] = entry.title;
+  c["date"] = format_date(entry.date);
+  return html(edit_entry_.render_string(c));
+}
+
+crow::response Views::edit_person_dialog(const Person &person) const {
+  Context c;
+  c["id"] = person.id;
+  c["name"] = person.name;
+  return html(edit_person_.render_string(c));
 }
 
 } // namespace fin::web

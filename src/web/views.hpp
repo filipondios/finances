@@ -39,6 +39,9 @@ public:
                                              std::span<const Share> shares,
                                              std::span<const Person> people) const;
 
+  [[nodiscard]] crow::response edit_entry_dialog(const Entry &entry) const;
+  [[nodiscard]] crow::response edit_person_dialog(const Person &person) const;
+
 private:
   [[nodiscard]] crow::response
   layout(std::string title, bool dashboard_active, std::string content,
@@ -51,6 +54,8 @@ private:
   crow::mustache::template_t month_content_;
   crow::mustache::template_t people_;
   crow::mustache::template_t shares_;
+  crow::mustache::template_t edit_entry_;
+  crow::mustache::template_t edit_person_;
 };
 
 } // namespace fin::web

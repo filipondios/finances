@@ -7,11 +7,12 @@
   </form>
   <div class="table-scroll">
     <table>
-      <thead><tr><th>Person</th><th>This month</th><th>Total</th><th></th></tr></thead>
+      <thead><tr><th>Person</th><th>This month</th><th>Total</th><th></th><th></th></tr></thead>
       <tbody>
         {{#people}}<tr><td>{{name}}</td><td>{{month_total}}</td><td>{{total}}</td>
+          <td><button class="btn edit" onclick="openEditDialog()" hx-get="/people/{{id}}/edit" hx-target="#edit-dialog-content" hx-swap="innerHTML">Edit</button></td>
           <td><button class="btn delete" hx-delete="/people/{{id}}" hx-target="#people-panel" hx-swap="outerHTML" hx-confirm="Delete this person and their shares?">Delete</button></td></tr>{{/people}}
-        {{^people}}<tr><td colspan="4" class="muted">No people yet.</td></tr>{{/people}}
+        {{^people}}<tr><td colspan="5" class="muted">No people yet.</td></tr>{{/people}}
       </tbody>
     </table>
   </div>
