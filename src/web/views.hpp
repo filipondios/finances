@@ -39,6 +39,11 @@ public:
                                              std::span<const Share> shares,
                                              std::span<const Person> people) const;
 
+  [[nodiscard]] crow::response
+  settlements_dialog(std::int64_t entry_id,
+                     std::span<const Settlement> settlements,
+                     std::span<const Person> people) const;
+
   [[nodiscard]] crow::response edit_entry_dialog(const Entry &entry) const;
   [[nodiscard]] crow::response edit_person_dialog(const Person &person) const;
 
@@ -54,6 +59,7 @@ private:
   crow::mustache::template_t month_content_;
   crow::mustache::template_t people_;
   crow::mustache::template_t shares_;
+  crow::mustache::template_t settlements_;
   crow::mustache::template_t edit_entry_;
   crow::mustache::template_t edit_person_;
 };

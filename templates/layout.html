@@ -31,12 +31,15 @@
 
 <dialog id="share-dialog" class="modal"><div id="share-dialog-content"></div></dialog>
 <dialog id="edit-dialog" class="modal"><div id="edit-dialog-content"></div></dialog>
+<dialog id="settle-dialog" class="modal"><div id="settle-dialog-content"></div></dialog>
 
 <script>
 function openShareDialog() { document.getElementById('share-dialog').showModal(); }
 function closeShareDialog() { document.getElementById('share-dialog').close(); }
 function openEditDialog() { document.getElementById('edit-dialog').showModal(); }
 function closeEditDialog() { document.getElementById('edit-dialog').close(); }
+function openSettleDialog() { document.getElementById('settle-dialog').showModal(); }
+function closeSettleDialog() { document.getElementById('settle-dialog').close(); }
 function toggleNewPerson() {
   const select = document.getElementById('share-person');
   const isNew = select && select.value === 'new';

@@ -37,8 +37,8 @@ nav select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8p
 .btn.primary:hover { background: #2f6dc0; }
 .btn.delete { padding: 5px 10px; font-size: 12px; color: var(--bad); }
 .btn.delete:hover { border-color: var(--bad); }
-.btn.share, .btn.edit { padding: 5px 10px; font-size: 12px; }
-#edit-dialog .entry-form label { flex: 1 1 100%; }
+.btn.share, .btn.edit, .btn.settle { padding: 5px 10px; font-size: 12px; }
+#edit-dialog .entry-form label, #settle-dialog .entry-form label { flex: 1 1 100%; }
 .modal { width: min(520px, 92vw); border: 1px solid var(--line); border-radius: 12px; padding: 0; }
 .modal::backdrop { background: rgba(20, 28, 40, .45); }
 .modal .panel { border: 0; }
@@ -74,7 +74,7 @@ nav select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8p
 .error { flex-basis: 100%; margin: 0; color: var(--bad); font-weight: 600; min-height: 0; background: #fdeaea; border: 1px solid var(--bad); border-radius: 8px; padding: 8px 10px; }
 .error:empty { display: none; }
 
-.table-scroll { overflow-x: auto; margin-bottom: 5px; }
+.table-scroll { overflow-x: auto; margin-bottom: 20px; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }

@@ -1,0 +1,30 @@
+<div class="panel">
+  <div class="panel-head"><h2>Settle debts</h2><button class="btn" type="button" onclick="closeSettleDialog()">Close</button></div>
+  {{#has_settlements}}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Person</th><th>Amount</th><th></th></tr></thead>
+      <tbody>
+        {{#settlements}}
+        <tr>
+          <td>{{name}}</td>
+          <td>{{amount}}</td>
+          <td><button class="btn delete" hx-delete="/entries/{{entry_id}}/settlements/{{id}}" hx-target="#settle-dialog-content" hx-swap="innerHTML">Remove</button></td>
+        </tr>
+        {{/settlements}}
+      </tbody>
+    </table>
+  </div>
+  {{/has_settlements}}
+  {{^has_settlements}}<p class="muted">No payments recorded for this entry.</p>{{/has_settlements}}
+  <h2>Add payment</h2>
+  <form class="entry-form" hx-post="/entries/{{entry_id}}/settlements" hx-target="#settle-dialog-content" hx-swap="innerHTML">
+    <label>Person<select name="person_id">
+      <option value="" selected disabled>Select person</option>
+      {{#people}}<option value="{{id}}">{{name}}</option>{{/people}}
+    </select></label>
+    <label>Amount<input name="amount" inputmode="decimal" required placeholder="0,00"></label>
+    <button class="btn primary" type="submit">Settle</button>
+    <p id="settle-error" class="error"></p>
+  </form>
+</div>

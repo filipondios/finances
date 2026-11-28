@@ -202,6 +202,33 @@ void register_routes(App &app, Ledger &ledger, const Views &views) {
         res.set_header("HX-Refresh", "true");
         return res;
       });
+
+  CROW_ROUTE(app, "/entries/<int>/settlements")([&](int id) {
+    return views.settlements_dialog(id, ledger.settlements(id), ledger.people());
+  });
+
+  CROW_ROUTE(app, "/entries/<int>/settlements")
+      .methods(crow::HTTPMethod::POST)([&](const crow::request &req, int id) {
+        return guarded("POST /entries/<id>/settlements", "#settle-error",
+                       "Could not save the payment.", [&] {
+          const Form form{req};
+          const auto selected = form["person_id"];
+          if (selected.empty())
+            throw ValidationError{"Select a person."};
+          ledger.add_settlement(id, to_id(selected), parse_amount(form["amount"]));
+          crow::response res{200, ""};
+          res.set_header("HX-Refresh", "true");
+          return res;
+        });
+      });
+
+  CROW_ROUTE(app, "/entries/<int>/settlements/<int>")
+      .methods(crow::HTTPMethod::DELETE)([&](int, int payment_id) {
+        ledger.remove_settlement(payment_id);
+        crow::response res{200, ""};
+        res.set_header("HX-Refresh", "true");
+        return res;
+      });
 }
 
 } // namespace fin::web
