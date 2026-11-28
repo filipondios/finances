@@ -236,6 +236,36 @@ TEST_CASE("debts are summed overall and per month", "[ledger][shares]") {
   CHECK_FALSE(counts.contains(oct)); // other month
 }
 
+TEST_CASE("payments reduce debts and never make them negative",
+          "[ledger][settlements]") {
+  Fixture f;
+  f.repo.add(
+      make_entry("shared", 1000, kExpense, Category::food, ymd(2026, 11, 2)));
+  const auto entry = f.repo.entries_in(ym(2026, 11)).front().id;
+  const auto ana = f.ledger.add_person("Ana");
+  f.ledger.add_share(entry, ana, 500);
+
+  f.ledger.add_settlement(entry, ana, 200);
+  auto debts = f.ledger.debts(ym(2026, 11));
+  REQUIRE(debts.size() == 1);
+  CHECK(debts[0].total == 300);
+  CHECK(debts[0].month_total == 300);
+
+  // A netting payment can exceed the recorded debt: the visible debt is zero.
+  f.ledger.add_settlement(entry, ana, 900);
+  debts = f.ledger.debts(ym(2026, 11));
+  CHECK(debts[0].total == 0);
+  CHECK(debts[0].month_total == 0);
+
+  std::int64_t big_id = 0;
+  for (const auto &payment : f.ledger.settlements(entry))
+    if (payment.amount == 900)
+      big_id = payment.id;
+  REQUIRE(big_id != 0);
+  f.ledger.remove_settlement(big_id);
+  CHECK(f.ledger.debts(ym(2026, 11))[0].total == 300);
+}
+
 TEST_CASE("the clock is injectable", "[ledger]") {
   Fixture f;
   CHECK(f.ledger.today() == ymd(2026, 11, 15));

@@ -335,4 +335,22 @@ grep -qi 'HX-Refresh: true' "$tmp/headers.txt"
 name="$(sqlite3 "$tmp/finances.db" "SELECT name FROM people WHERE id=$person_id")"
 [[ "$name" == 'Renamed person' ]] || { echo "Person name not edited: $name"; exit 1; }
 
-echo "OK: dashboard, entries, deletion, people, shares, editing, validation, date order and statistics"
+# Payments settle debts explicitly; partial and netted amounts are accepted.
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' "http://127.0.0.1:$port/entries/$entry_id/settlements")"
+[[ "$code" == 200 ]] || { echo "Settlements modal returned $code"; exit 1; }
+grep -q 'No payments recorded' "$tmp/out.html"
+code="$(curl -sS -D "$tmp/headers.txt" -o "$tmp/out.html" -w '%{http_code}' -H "HX-Request: true" -X POST "http://127.0.0.1:$port/entries/$entry_id/settlements" -d "person_id=$person_id&amount=0,20")"
+[[ "$code" == 200 ]] || { echo "Add payment returned $code"; exit 1; }
+grep -qi 'HX-Refresh: true' "$tmp/headers.txt"
+paid="$(sqlite3 "$tmp/finances.db" "SELECT SUM(amount_cents) FROM settlements WHERE entry_id=$entry_id AND person_id=$person_id")"
+[[ "$paid" == 20 ]] || { echo "Payment saved incorrectly: $paid"; exit 1; }
+code="$(curl -sS -o "$tmp/out.html" -w '%{http_code}' -H "HX-Request: true" -X POST "http://127.0.0.1:$port/entries/$entry_id/settlements" -d "person_id=$person_id&amount=abc")"
+grep -q 'The amount is not valid' "$tmp/out.html" || { echo "Invalid payment accepted"; exit 1; }
+payment_id="$(sqlite3 "$tmp/finances.db" "SELECT id FROM settlements WHERE entry_id=$entry_id")"
+code="$(curl -sS -D "$tmp/headers.txt" -o "$tmp/out.html" -w '%{http_code}' -H "HX-Request: true" -X DELETE "http://127.0.0.1:$port/entries/$entry_id/settlements/$payment_id")"
+[[ "$code" == 200 ]] || { echo "Delete payment returned $code"; exit 1; }
+grep -qi 'HX-Refresh: true' "$tmp/headers.txt"
+paid="$(sqlite3 "$tmp/finances.db" 'SELECT COUNT(*) FROM settlements')"
+[[ "$paid" == 0 ]] || { echo "Payment not deleted: $paid"; exit 1; }
+
+echo "OK: dashboard, entries, deletion, people, shares, editing, settlements, validation, date order and statistics"
