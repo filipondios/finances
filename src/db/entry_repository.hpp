@@ -73,7 +73,12 @@ public:
                                  Cents cents);
   void remove_share(std::int64_t entry_id, std::int64_t person_id);
 
-  /// Amount owed by each person, overall and in `month`.
+  /// Payments that reduce a person's debt, attached to an entry.
+  [[nodiscard]] std::vector<Settlement> settlements(std::int64_t entry_id) const;
+  void add_settlement(std::int64_t entry_id, std::int64_t person_id, Cents cents);
+  void remove_settlement(std::int64_t id);
+
+  /// Amount owed by each person, overall and in `month`, never negative.
   [[nodiscard]] std::vector<PersonDebt> debts(YearMonth month) const;
 
 private:
@@ -103,6 +108,9 @@ private:
   mutable SQLite::Statement add_share_;
   mutable SQLite::Statement remove_share_;
   mutable SQLite::Statement debts_;
+  mutable SQLite::Statement settlements_;
+  mutable SQLite::Statement add_settlement_;
+  mutable SQLite::Statement remove_settlement_;
 };
 
 } // namespace fin

@@ -129,6 +129,17 @@ void Ledger::remove_share(std::int64_t entry_id, std::int64_t person_id) {
   repo_.remove_share(entry_id, person_id);
 }
 
+std::vector<Settlement> Ledger::settlements(std::int64_t entry_id) const {
+  return repo_.settlements(entry_id);
+}
+
+void Ledger::add_settlement(std::int64_t entry_id, std::int64_t person_id,
+                            Cents cents) {
+  repo_.add_settlement(entry_id, person_id, cents);
+}
+
+void Ledger::remove_settlement(std::int64_t id) { repo_.remove_settlement(id); }
+
 std::vector<PersonDebt> Ledger::debts(YearMonth month) const {
   return repo_.debts(month);
 }

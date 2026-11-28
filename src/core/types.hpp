@@ -95,6 +95,13 @@ struct Share {
   Cents amount{};
 };
 
+struct Settlement {
+  std::int64_t id{};
+  std::int64_t person_id{};
+  std::string name;
+  Cents amount{};
+};
+
 struct PersonDebt {
   std::int64_t id{};
   std::string name;

@@ -82,8 +82,19 @@ constexpr auto kMigration3 = R"sql(
     CREATE INDEX entries_by_date ON entries(date);
 )sql";
 
-constexpr std::array<std::string_view, 3> kMigrations{kMigration1, kMigration2,
-                                                      kMigration3};
+/// Migration 4: payments that reduce a person's debt (clamped at zero in the
+/// debts query), so partial and netted repayments can be recorded explicitly.
+constexpr auto kMigration4 = R"sql(
+    CREATE TABLE IF NOT EXISTS settlements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entry_id INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+        person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0)
+    );
+)sql";
+
+constexpr std::array<std::string_view, 4> kMigrations{kMigration1, kMigration2,
+                                                      kMigration3, kMigration4};
 
 /// Applies the pending migrations, each in its own transaction, tracking the
 /// schema version in `PRAGMA user_version`.
@@ -199,12 +210,24 @@ EntryRepository::EntryRepository(const std::filesystem::path &file)
                       "VALUES (?1, ?2, ?3)"},
       remove_share_{db_, "DELETE FROM entry_shares "
                          "WHERE entry_id = ?1 AND person_id = ?2"},
-      debts_{db_, "SELECT p.id, p.name, COALESCE(SUM(s.amount_cents), 0), "
-                  "COALESCE(SUM(CASE WHEN e.date >= ?1 AND e.date <= ?2 "
-                  "THEN s.amount_cents ELSE 0 END), 0) "
-                  "FROM people p LEFT JOIN entry_shares s ON s.person_id = p.id "
-                  "LEFT JOIN entries e ON e.id = s.entry_id "
-                  "GROUP BY p.id ORDER BY 3 DESC, p.name"} {}
+      debts_{db_, "SELECT p.id, p.name, "
+                  "MAX(COALESCE((SELECT SUM(s.amount_cents) FROM entry_shares s "
+                  "WHERE s.person_id = p.id), 0) - "
+                  "COALESCE((SELECT SUM(t.amount_cents) FROM settlements t "
+                  "WHERE t.person_id = p.id), 0), 0), "
+                  "MAX(COALESCE((SELECT SUM(s.amount_cents) FROM entry_shares s "
+                  "JOIN entries e ON e.id = s.entry_id WHERE s.person_id = p.id "
+                  "AND e.date >= ?1 AND e.date <= ?2), 0) - "
+                  "COALESCE((SELECT SUM(t.amount_cents) FROM settlements t "
+                  "JOIN entries e ON e.id = t.entry_id WHERE t.person_id = p.id "
+                  "AND e.date >= ?1 AND e.date <= ?2), 0), 0) "
+                  "FROM people p ORDER BY 3 DESC, p.name"},
+      settlements_{db_, "SELECT t.id, t.person_id, p.name, t.amount_cents "
+                        "FROM settlements t JOIN people p ON p.id = t.person_id "
+                        "WHERE t.entry_id = ? ORDER BY p.name"},
+      add_settlement_{db_, "INSERT INTO settlements "
+                           "(entry_id, person_id, amount_cents) VALUES (?1, ?2, ?3)"},
+      remove_settlement_{db_, "DELETE FROM settlements WHERE id = ?"} {}
 
 void EntryRepository::add(const NewEntry &entry) {
   const std::scoped_lock lock{mutex_};
@@ -459,6 +482,51 @@ void EntryRepository::remove_share(std::int64_t entry_id, std::int64_t person_id
   remove_share_.bind(1, entry_id);
   remove_share_.bind(2, person_id);
   remove_share_.exec();
+}
+
+std::vector<Settlement> EntryRepository::settlements(std::int64_t entry_id) const {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{settlements_};
+  settlements_.bind(1, entry_id);
+
+  std::vector<Settlement> out;
+  while (settlements_.executeStep())
+    out.push_back({settlements_.getColumn(0).getInt64(),
+                   settlements_.getColumn(1).getInt64(),
+                   settlements_.getColumn(2).getString(),
+                   settlements_.getColumn(3).getInt64()});
+  return out;
+}
+
+void EntryRepository::add_settlement(std::int64_t entry_id,
+                                     std::int64_t person_id, Cents cents) {
+  if (cents <= 0)
+    throw ValidationError{"The amount is not valid."};
+  const std::scoped_lock lock{mutex_};
+  {
+    const ResetOnExit reset{person_exists_};
+    person_exists_.bind(1, person_id);
+    if (!person_exists_.executeStep())
+      throw ValidationError{"Select a person."};
+  }
+  {
+    const ResetOnExit reset{entry_};
+    entry_.bind(1, entry_id);
+    if (!entry_.executeStep())
+      throw ValidationError{"Entry not found."};
+  }
+  const ResetOnExit reset{add_settlement_};
+  add_settlement_.bind(1, entry_id);
+  add_settlement_.bind(2, person_id);
+  add_settlement_.bind(3, cents);
+  add_settlement_.exec();
+}
+
+void EntryRepository::remove_settlement(std::int64_t id) {
+  const std::scoped_lock lock{mutex_};
+  const ResetOnExit reset{remove_settlement_};
+  remove_settlement_.bind(1, id);
+  remove_settlement_.exec();
 }
 
 std::vector<PersonDebt> EntryRepository::debts(YearMonth month) const {

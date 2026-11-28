@@ -56,7 +56,7 @@ TEST_CASE("a new database gets the current schema", "[migrations]") {
     const EntryRepository repo{file.path()};
   }
   auto db = file.raw();
-  CHECK(user_version(db) == 3);
+  CHECK(user_version(db) == 4);
   CHECK(fails(db, "INSERT INTO entries (title,amount_cents,kind,category,date) "
                   "VALUES ('x',1,'expense','otros','garbage')"));
 }
@@ -78,7 +78,7 @@ TEST_CASE("a legacy database is migrated keeping its data", "[migrations]") {
   }
 
   auto db = file.raw();
-  CHECK(user_version(db) == 3);
+  CHECK(user_version(db) == 4);
   CHECK(db.execAndGet("SELECT MAX(id) FROM entries").getInt() ==
         4); // id 3 not reused
   CHECK(fails(db, "INSERT INTO entries (title,amount_cents,kind,category,date) "
@@ -91,7 +91,7 @@ TEST_CASE("a legacy database is migrated keeping its data", "[migrations]") {
   {
     const EntryRepository again{file.path()};
   } // opening again is a no-op
-  CHECK(user_version(db) == 3);
+  CHECK(user_version(db) == 4);
 }
 
 TEST_CASE("a legacy database with a malformed date is left untouched",

@@ -62,6 +62,11 @@ public:
   void add_share_with_new_person(std::int64_t entry_id, std::string_view name,
                                  Cents cents);
   void remove_share(std::int64_t entry_id, std::int64_t person_id);
+
+  [[nodiscard]] std::vector<Settlement> settlements(std::int64_t entry_id) const;
+  void add_settlement(std::int64_t entry_id, std::int64_t person_id, Cents cents);
+  void remove_settlement(std::int64_t id);
+
   [[nodiscard]] std::vector<PersonDebt> debts(YearMonth month) const;
 
 private:
